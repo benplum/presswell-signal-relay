@@ -49,11 +49,11 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
      * @return string[]
      */
     public function get_form_editor_field_settings() {
-      return array(
+      return [
         'label_setting',
         'description_setting',
         'css_class_setting',
-      );
+      ];
     }
 
     /**
@@ -62,10 +62,10 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
      * @return array
      */
     public function get_form_editor_button() {
-      return array(
+      return [
         'group' => 'advanced_fields',
         'text'  => esc_html__( 'Tracking', 'presswell-gf-tracking-field' ),
-      );
+      ];
     }
 
     /**
@@ -84,7 +84,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
      */
     public function get_inputs() {
       $keys   = Presswell_GF_Tracking_Field::get_tracking_keys();
-      $inputs = array();
+      $inputs = [];
 
       if ( empty( $keys ) ) {
         return $inputs;
@@ -92,12 +92,12 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
 
       $index = 1;
       foreach ( $keys as $key ) {
-        $inputs[] = array(
+        $inputs[] = [
           'id'       => sprintf( '%d.%d', $this->id, $index ),
           'label'    => $key,
           'name'     => $key,
           'isHidden' => true,
-        );
+        ];
         $index++;
       }
 
@@ -131,7 +131,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     public function get_field_input( $form, $value = '', $entry = null ) {
       $form_id   = absint( rgar( $form, 'id' ) );
       $inputs    = $this->get_inputs();
-      $input_tag = array();
+      $input_tag = [];
 
       if ( empty( $inputs ) ) {
         return '';
@@ -165,7 +165,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
         );
       }
 
-      $wrapper_classes = array( 'presswell-gumshoe-field', 'ginput_container' );
+      $wrapper_classes = [ 'presswell-gumshoe-field', 'ginput_container' ];
 
       return sprintf(
         '<div class="%1$s" style="display:none" aria-hidden="true">%2$s</div>',
@@ -238,7 +238,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
         return implode( $separator, $this->format_pairs_as_text( $pairs ) );
       }
 
-      $items = array();
+      $items = [];
       foreach ( $pairs as $key => $val ) {
         $items[] = sprintf( '<li><strong>%s:</strong> %s</li>', esc_html( $key ), esc_html( $val ) );
       }
@@ -271,11 +271,11 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     private function get_tracking_value_pairs( $raw ) {
       $keys = Presswell_GF_Tracking_Field::get_tracking_keys();
       if ( empty( $keys ) ) {
-        return array();
+        return [];
       }
 
       $source = $this->normalize_value_source( $raw );
-      $pairs  = array();
+      $pairs  = [];
 
       $index = 1;
       foreach ( $keys as $key ) {
@@ -302,7 +302,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
       }
 
       if ( ! GFCommon::is_entry_detail() || ! class_exists( 'GFAPI' ) ) {
-        return array();
+        return [];
       }
 
       $entry_id = absint( rgget( 'lid' ) );
@@ -311,12 +311,12 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
       }
 
       if ( ! $entry_id ) {
-        return array();
+        return [];
       }
 
       $entry = GFAPI::get_entry( $entry_id );
       if ( is_wp_error( $entry ) || ! is_array( $entry ) ) {
-        return array();
+        return [];
       }
 
       return $entry;
@@ -346,7 +346,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
         }
       }
 
-      return array();
+      return [];
     }
 
     /**
@@ -373,7 +373,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
      * @return array
      */
     private function format_pairs_as_text( $pairs ) {
-      $lines = array();
+      $lines = [];
       foreach ( $pairs as $key => $val ) {
         $lines[] = sprintf( '%s: %s', $key, $val );
       }

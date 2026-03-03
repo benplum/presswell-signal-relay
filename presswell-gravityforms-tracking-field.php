@@ -37,7 +37,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
 
   /**
-   * Bootstrapper for the tracking field plugin.
+     * Bootstrap container for all tracking field features.
    */
   final class Presswell_GF_Tracking_Field {
 
@@ -75,7 +75,7 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
      *
      * @var string[]
      */
-    private static $tracking_keys = array(
+    private static $tracking_keys = [
       'utm_source',
       'utm_medium',
       'utm_campaign',
@@ -88,10 +88,10 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
       'landing_page',
       'landing_query',
       'referrer',
-    );
+    ];
 
     /**
-     * Initiate the singleton.
+     * Return the shared plugin instance.
      *
      * @return Presswell_GF_Tracking_Field
      */
@@ -106,9 +106,19 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
     /**
      * Wire hooks.
      */
-    private function __construct() {
-      add_action( 'plugins_loaded', array( $this, 'maybe_bootstrap' ), 20 );
+    protected function __construct() {
+      add_action( 'plugins_loaded', [ $this, 'maybe_bootstrap' ], 20 );
     }
+
+    /**
+     * Prevent cloning the singleton.
+     */
+    public function __clone() {}
+
+    /**
+     * Prevent unserializing the singleton.
+     */
+    public function __wakeup() {}
 
     /**
      * Initialize components when Gravity Forms is available.
@@ -122,21 +132,21 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
 
       GF_Fields::register( new GF_Field_Presswell_Tracking() );
 
-      add_action( 'gform_editor_js_set_default_values', array( $this, 'output_editor_defaults_js' ) );
-      add_action( 'gform_editor_js', array( $this, 'output_editor_guard_js' ) );
-      add_action( 'gform_enqueue_scripts', array( $this, 'maybe_enqueue_assets' ), 10, 2 );
-      add_filter( 'gform_pre_form_editor_save', array( $this, 'enforce_single_tracking_field' ) );
-      add_filter( 'gform_pre_render', array( $this, 'enforce_single_tracking_field' ), 5 );
-      add_filter( 'gform_pre_validation', array( $this, 'enforce_single_tracking_field' ), 5 );
-      add_filter( 'gform_pre_submission_filter', array( $this, 'enforce_single_tracking_field' ), 5 );
-      add_filter( 'gform_admin_pre_render', array( $this, 'enforce_single_tracking_field' ), 5 );
+      add_action( 'gform_editor_js_set_default_values', [ $this, 'output_editor_defaults_js' ] );
+      add_action( 'gform_editor_js', [ $this, 'output_editor_guard_js' ] );
+      add_action( 'gform_enqueue_scripts', [ $this, 'maybe_enqueue_assets' ], 10, 2 );
+      add_filter( 'gform_pre_form_editor_save', [ $this, 'enforce_single_tracking_field' ] );
+      add_filter( 'gform_pre_render', [ $this, 'enforce_single_tracking_field' ], 5 );
+      add_filter( 'gform_pre_validation', [ $this, 'enforce_single_tracking_field' ], 5 );
+      add_filter( 'gform_pre_submission_filter', [ $this, 'enforce_single_tracking_field' ], 5 );
+      add_filter( 'gform_admin_pre_render', [ $this, 'enforce_single_tracking_field' ], 5 );
     }
 
     /**
      * Output default settings for the field within the form editor.
      */
     public function output_editor_defaults_js() {
-        $keys = Presswell_GF_Tracking_Field::get_tracking_keys();
+      $keys = Presswell_GF_Tracking_Field::get_tracking_keys();
       ?>
       case 'presswell_gumshoe':
         field.label = '<?php echo esc_js( __( 'Tracking', 'presswell-gf-tracking-field' ) ); ?>';
@@ -168,11 +178,11 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
         wp_localize_script(
           self::SCRIPT_HANDLE,
           'presswellGFGumshoeConfig',
-          array(
+          [
             'storageKey'  => self::STORAGE_KEY,
             'ttl'         => self::get_ttl_seconds(),
             'gumshoeKeys' => self::get_tracking_keys(),
-          )
+          ]
         );
         $localized = true;
       }
@@ -189,7 +199,7 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
       wp_register_script(
         self::SCRIPT_HANDLE,
         plugins_url( 'assets/js/gumshoe.js', __FILE__ ),
-        array(),
+        [],
         self::VERSION,
         true
       );
@@ -205,7 +215,7 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
         return;
       }
 
-      wp_register_style( self::STYLE_HANDLE, false, array(), self::VERSION );
+      wp_register_style( self::STYLE_HANDLE, false, [], self::VERSION );
       wp_enqueue_style( self::STYLE_HANDLE );
 
       $css = '.gfield--type-presswell_gumshoe{position:fixed!important;height:0!important;width:0!important;overflow:hidden!important;pointer-events:none!important;}';
@@ -259,7 +269,7 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
         return $form;
       }
 
-      $filtered = array();
+      $filtered = [];
       $found    = false;
 
       foreach ( $form['fields'] as $field ) {
@@ -339,4 +349,15 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
   }
 }
 
-Presswell_GF_Tracking_Field::instance();
+if ( ! function_exists( 'presswell_gf_tracking_field' ) ) {
+  /**
+   * Helper to access the singleton instance from procedural code.
+   *
+   * @return Presswell_GF_Tracking_Field
+   */
+  function presswell_gf_tracking_field() {
+    return Presswell_GF_Tracking_Field::instance();
+  }
+}
+
+presswell_gf_tracking_field();
