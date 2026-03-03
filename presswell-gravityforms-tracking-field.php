@@ -2,12 +2,32 @@
 /**
  * Plugin Name: Presswell Tracking Field for Gravity Forms
  * Description: Capture UTM and click tracking parameters across a visitor session.
- * Version: 0.1.0
- * Author: Ben Plum
+ * Author: Presswell
+ * Version: 1.0.0
+ * Plugin URI: http://wordpress.org/plugins/
+ * Author URI: http://presswell.co
  * License: GPLv2 or later
+ * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: presswell-gf-tracking-field
+ * 
+ * @package Presswell Tracking Field for Gravity Forms
+ * @author Presswell
+ *
+ * Presswell Tracking Field for Gravity Forms is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * any later version.
+ *
+ * Presswell Tracking Field for Gravity Forms is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Presswell Tracking Field for Gravity Forms. If not, see <http://www.gnu.org/licenses/>.
  */
 
+// Test Params
 // ?utm_source=google&utm_medium=cpc&utm_campaign=winter_launch&utm_content=cta_banner&utm_term=snow_boots&gclid=Cj0KCQiAzbi-ABCD1234&fbclid=fb.9876543210XYZ&msclkid=MSCLKID123456&ttclid=TTCLID-987654&landing_page=https%3A%2F%2Fexample.com%2Fwinter-sale&landing_query=%3Fref%3Dpartner&referrer=https%3A%2F%2Fpartner-site.com
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -21,7 +41,7 @@ if ( ! class_exists( 'Presswell_GF_Tracking_Field' ) ) {
    */
   final class Presswell_GF_Tracking_Field {
 
-    const VERSION        = '0.1.0';
+    const VERSION        = '1.0.0';
     const FIELD_TYPE     = 'presswell_gumshoe';
     const SCRIPT_HANDLE  = 'presswell-gf-gumshoe-js';
     const STYLE_HANDLE   = 'presswell-gf-gumshoe-css';
