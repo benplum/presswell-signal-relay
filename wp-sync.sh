@@ -2,8 +2,8 @@
 
 set -eu
 
-PLUGIN_NAME="presswell-gravityforms-tracking-field"
-GIT_REPO="git@github.com:benplum/presswell-gravityforms-tracking-field.git"
+PLUGIN_NAME="presswell-signal-relay"
+GIT_REPO="git@github.com:benplum/presswell-signal-relay.git"
 SVN_USER="presswell"
 ASSETS_DIR="wp-assets"
 

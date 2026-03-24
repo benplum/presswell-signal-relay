@@ -4,10 +4,10 @@
     return;
   }
 
-  var config = window.presswellGFGumshoeConfig || {};
-  var storageKey = config.storageKey || 'gfGumshoe';
+  var config = window.presswellSignalRelayConfig || {};
+  var storageKey = config.storageKey || 'presswellSignalRelay';
   var ttlMs = Math.max(parseInt(config.ttl, 10) || 0, 0) * 1000;
-  var gumshoeKeys = Array.isArray(config.gumshoeKeys) ? config.gumshoeKeys : [];
+  var transceiverKeys = Array.isArray(config.transceiverKeys) ? config.transceiverKeys : [];
 
   function encodePayload(payload) {
     try {
@@ -30,6 +30,7 @@
     if (!raw) {
       return null;
     }
+
     try {
       var binary = window.atob(raw);
       var json;
@@ -58,11 +59,13 @@
       if (!stored || typeof stored !== 'object') {
         return null;
       }
+
       var nowTs = Date.now();
       if (ttlMs > 0 && stored.timestamp && nowTs - stored.timestamp > ttlMs) {
         window.localStorage.removeItem(storageKey);
         return null;
       }
+
       return stored;
     } catch (err) {
       return null;
@@ -85,19 +88,22 @@
 
   function getQueryValues() {
     var values = {};
-    if (!gumshoeKeys.length) {
+    if (!transceiverKeys.length) {
       return values;
     }
+
     var params = new URLSearchParams(window.location.search || '');
-    gumshoeKeys.forEach(function (key) {
+    transceiverKeys.forEach(function (key) {
       if (!key) {
         return;
       }
+
       var paramValue = params.get(key);
       if (paramValue !== null && paramValue !== '') {
         values[key] = paramValue;
       }
     });
+
     return values;
   }
 
@@ -129,21 +135,59 @@
     if (!values) {
       return;
     }
-    var inputs = document.querySelectorAll('[data-presswell-gumshoe]');
+
+    var inputs = document.querySelectorAll('[data-presswell-transceiver]');
     if (!inputs.length) {
       return;
     }
+
     inputs.forEach(function (input) {
-      var key = input.getAttribute('data-presswell-gumshoe');
+      var key = input.getAttribute('data-presswell-transceiver');
       if (!key) {
         return;
       }
-      var val = values[key] || '';
-      input.value = val;
+      input.value = values[key] || '';
     });
   }
 
-  function init() {
+  function injectForminatorFallbackInputs() {
+    if (!transceiverKeys.length) {
+      return;
+    }
+
+    var forms = document.querySelectorAll('.forminator-ui form');
+    if (!forms.length) {
+      return;
+    }
+
+    forms.forEach(function (form) {
+      if (form.querySelector('[data-presswell-transceiver-forminator="1"]')) {
+        return;
+      }
+
+      var wrapper = document.createElement('div');
+      wrapper.setAttribute('data-presswell-transceiver-forminator', '1');
+      wrapper.setAttribute('aria-hidden', 'true');
+      wrapper.style.display = 'none';
+
+      transceiverKeys.forEach(function (key) {
+        if (!key) {
+          return;
+        }
+
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = '';
+        input.setAttribute('data-presswell-transceiver', key);
+        wrapper.appendChild(input);
+      });
+
+      form.appendChild(wrapper);
+    });
+  }
+
+  function syncSignals() {
     var stored = readStorage() || {};
     var fresh = getQueryValues();
 
@@ -154,7 +198,25 @@
       writeStorage(merged);
     }
 
+    injectForminatorFallbackInputs();
     populateInputs(merged);
+  }
+
+  function init() {
+    syncSignals();
+
+    if (typeof MutationObserver !== 'function') {
+      return;
+    }
+
+    var observer = new MutationObserver(function () {
+      syncSignals();
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
   }
 
   if (document.readyState === 'loading') {

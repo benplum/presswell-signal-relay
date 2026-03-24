@@ -1,6 +1,6 @@
-=== Presswell Tracking Field for Gravity Forms ===
+=== Presswell Signal Relay ===
 Contributors: presswell, benplum
-Tags: gravity forms, attribution, utm, tracking, hidden field, marketing, click id
+Tags: gravity forms, forminator, attribution, utm, tracking, hidden field, marketing, click id
 Requires at least: 6.1
 Tested up to: 6.5
 Stable tag: trunk
@@ -11,16 +11,18 @@ Capture UTM and click tracking parameters across a visitor session.
 
 == Description ==
 
-Presswell Tracking Field for Gravity Forms adds a hidden "Tracking" field to the form builder so each entry can include campaign attribution metadata.
+Presswell Signal Relay captures attribution parameters and stores them with supported form plugin submissions.
 
 **Features**
 
 * Adds a Tracking field in Gravity Forms under Advanced Fields
+* Injects and stores tracking data for Forminator custom forms
 * Captures common attribution parameters and stores them with submissions
 * Tracks `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `gclid`, `fbclid`, `msclkid`, `ttclid`, `landing_page`, `landing_query`, and `referrer`
 * Persists values in browser localStorage for the current session (1-hour TTL by default)
 * Automatically populates hidden field inputs when forms render
-* Enforces a single tracking field per form to avoid duplicate data
+* Uses adapter-based integrations so additional form systems can be added cleanly
+* Enforces a single tracking field per Gravity Forms form to avoid duplicate data
 
 ***Session Attribution Storage***
 
@@ -28,38 +30,56 @@ The plugin reads query parameters from the current URL, merges them with stored 
 
 ***Form Entry Integration***
 
-When a form includes the Tracking field, hidden inputs are generated and populated automatically so data arrives in the entry without custom template code.
+When a supported form renders, hidden inputs are generated and populated automatically so data arrives in the entry without custom template code.
+
+***Compatibility Note***
+
+Presswell Signal Relay is a new plugin baseline. Legacy helper functions and legacy `presswell_gf_*` / `presswell_forminator_*` filter hooks are not included.
 
 = Documentation =
 
-**presswell_gf_tracking_keys( $keys )**
+**presswell_signal_relay_tracking_keys( $keys, $context )**
 
 * **$keys** (array) (required) - Ordered list of tracking keys that should be captured and stored with each entry.
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, or `forminator`).
 * Return an indexed array of string keys.
-* These values are used to build the Tracking field's hidden inputs and entry-detail output.
+* These values are used to build hidden inputs and entry-detail output.
 
 Example:
 
 `
-add_filter( 'presswell_gf_tracking_keys', function( $keys ) {
+add_filter( 'presswell_signal_relay_tracking_keys', function( $keys, $context ) {
+    if ( 'gravityforms' !== $context ) {
+        return $keys;
+    }
     $keys[] = 'custom_param';
     $keys[] = 'utm_id';
     return $keys;
-} );
+}, 10, 2 );
 `
 
-**presswell_gf_tracking_ttl( $ttl )**
+**presswell_signal_relay_tracking_ttl( $ttl, $context )**
 
 * **$ttl** (int) (required) - Session storage lifetime in seconds. Default is `3600` (1 hour).
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, or `forminator`).
 * Return a positive integer. Invalid values automatically fall back to the default TTL.
 
 Example:
 
 `
-add_filter( 'presswell_gf_tracking_ttl', function( $ttl ) {
+add_filter( 'presswell_signal_relay_tracking_ttl', function( $ttl, $context ) {
+    if ( 'core' !== $context ) {
+        return $ttl;
+    }
     return DAY_IN_SECONDS * 7;
-} );
+}, 10, 2 );
 `
+
+**presswell_signal_relay_storage_key( $storage_key, $context )**
+
+* **$storage_key** (string) (required) - Browser storage key used for attribution payload.
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, or `forminator`).
+* Return a non-empty string.
 
 **Default Tracking Keys**
 
@@ -81,8 +101,9 @@ add_filter( 'presswell_gf_tracking_ttl', function( $ttl ) {
 Install via the WordPress plugin installer or manually upload the folder to `wp-content/plugins/`.
 
 1. Activate the plugin.
-2. Edit a Gravity Form and add the **Tracking** field from *Advanced Fields*.
-3. Publish the form and begin sending traffic with UTM/click parameters.
+2. If using Gravity Forms, edit a form and add the **Tracking** field from *Advanced Fields*.
+3. If using Forminator, publish a custom form (tracking inputs are injected automatically).
+4. Send traffic with UTM/click parameters.
 
 == Frequently Asked Questions ==
 
@@ -96,11 +117,11 @@ No. The plugin injects and populates the field automatically when a form contain
 
 = How long is attribution data stored? =
 
-By default, one hour. You can change the TTL with the `presswell_gf_tracking_ttl` filter.
+By default, one hour. You can change the TTL with the `presswell_signal_relay_tracking_ttl` filter.
 
 = Can I track additional custom parameters? =
 
-Yes. Use the `presswell_gf_tracking_keys` filter to add or remove keys.
+Yes. Use the `presswell_signal_relay_tracking_keys` filter to add or remove keys.
 
 == Screenshots ==
 
@@ -110,5 +131,11 @@ Yes. Use the `presswell_gf_tracking_keys` filter to add or remove keys.
 
 == Changelog ==
 
+= 1.1.0 =
+* Renamed plugin to Presswell Signal Relay.
+* Added adapter architecture for Gravity Forms and Forminator.
+* Added centralized constants and service layers.
+* Standardized filter API under `presswell_signal_relay_*` hooks.
+
 = 1.0.0 =
-* Initial release with Tracking field, session storage, and attribution key filters.
+* Initial release.

@@ -7,16 +7,16 @@ if ( ! defined( 'ABSPATH' ) ) {
   exit;
 }
 
-if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking' ) ) {
+if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWSL_Gravity_Forms_Field' ) ) {
 
-  class GF_Field_Presswell_Tracking extends GF_Field {
+  class PWSL_Gravity_Forms_Field extends GF_Field {
 
     /**
      * Field type identifier registered with Gravity Forms.
      *
      * @var string
      */
-    public $type = Presswell_GF_Tracking_Field::FIELD_TYPE;
+    public $type = PWSL::FIELD_TYPE;
 
     /**
      * Hide the field label by default.
@@ -26,12 +26,21 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     public $labelPlacement = 'hidden_label';
 
     /**
+     * Resolve the shared tracking service.
+     *
+     * @return PWSL_Tracking_Service
+     */
+    private function service() {
+      return presswell_signal_relay()->get_service();
+    }
+
+    /**
      * Title displayed within the form editor panel.
      *
      * @return string
      */
     public function get_form_editor_field_title() {
-      return esc_html__( 'Tracking', 'presswell-gf-tracking-field' );
+      return esc_html__( 'Tracking', PWSL::TEXT_DOMAIN );
     }
 
     /**
@@ -40,7 +49,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
      * @return string
      */
     public function get_form_editor_field_icon() {
-      return plugin_dir_url( Presswell_GF_Tracking_Field::PLUGIN_FILE ) . 'assets/svg/radar.svg';
+      return plugin_dir_url( PWSL_PLUGIN_FILE ) . 'assets/svg/radar.svg';
     }
 
     /**
@@ -64,7 +73,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     public function get_form_editor_button() {
       return [
         'group' => 'advanced_fields',
-        'text'  => esc_html__( 'Tracking', 'presswell-gf-tracking-field' ),
+        'text'  => esc_html__( 'Tracking', PWSL::TEXT_DOMAIN ),
       ];
     }
 
@@ -78,12 +87,12 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     }
 
     /**
-     * Define the individual inputs (one per tracking key) saved alongside entries.
+     * Define the individual inputs saved alongside entries.
      *
      * @return array
      */
     public function get_inputs() {
-      $keys   = Presswell_GF_Tracking_Field::get_tracking_keys();
+      $keys   = $this->service()->get_tracking_keys( 'gravityforms' );
       $inputs = [];
 
       if ( empty( $keys ) ) {
@@ -105,7 +114,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     }
 
     /**
-     * Ensure Gravity Forms always treats the field as multi-input when saving entries.
+     * Ensure Gravity Forms always treats the field as multi-input.
      *
      * @return array
      */
@@ -122,9 +131,9 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     /**
      * Render hidden inputs that will be populated by the tracking script.
      *
-     * @param array      $form  Current form object.
+     * @param array        $form  Current form object.
      * @param string|array $value Current value.
-     * @param array|null $entry Entry data when in admin context.
+     * @param array|null   $entry Entry data when in admin context.
      *
      * @return string
      */
@@ -157,10 +166,10 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
           }
         }
 
-        $current = Presswell_GF_Tracking_Field::sanitize_tracking_value( $key_name, $current );
+        $current = $this->service()->sanitize_tracking_value( $key_name, $current );
 
         $input_tag[] = sprintf(
-          '<input type="hidden" id="%1$s" name="%2$s" value="%3$s" data-presswell-gumshoe="%4$s" />',
+          '<input type="hidden" id="%1$s" name="%2$s" value="%3$s" data-presswell-transceiver="%4$s" />',
           esc_attr( $custom_id ),
           esc_attr( $field_name ),
           esc_attr( $current ),
@@ -168,17 +177,15 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
         );
       }
 
-      $wrapper_classes = [ 'presswell-gumshoe-field', 'ginput_container' ];
-
       return sprintf(
         '<div class="%1$s" style="display:none" aria-hidden="true">%2$s</div>',
-        esc_attr( implode( ' ', $wrapper_classes ) ),
+        esc_attr( 'presswell-transceiver-field ginput_container' ),
         implode( '', $input_tag )
       );
     }
 
     /**
-     * Suppress descriptive text on the public form while allowing it in the editor/admin views.
+     * Suppress descriptive text on public forms while preserving editor/admin output.
      *
      * @param string $value   Current value.
      * @param string $lead_id Entry ID when loading existing entries.
@@ -189,16 +196,16 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     public function get_field_content( $value, $lead_id = 0, $form_id = 0 ) {
       if ( GFCommon::is_form_editor() ) {
         $content  = parent::get_field_content( $value, $lead_id, $form_id );
-        $icon_url = esc_url( plugin_dir_url( Presswell_GF_Tracking_Field::PLUGIN_FILE ) . 'assets/svg/radar.svg' );
-        $label    = esc_html__( 'Tracking', 'presswell-gf-tracking-field' );
+        $icon_url = esc_url( plugin_dir_url( PWSL_PLUGIN_FILE ) . 'assets/svg/radar.svg' );
+        $label    = esc_html__( 'Tracking', PWSL::TEXT_DOMAIN );
 
         $badge = sprintf(
-          '<div class="presswell-gumshoe-editor-badge" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-weight:600;"><img src="%1$s" alt="%2$s" width="20" height="20" style="display:block;" /><span>%2$s</span></div>',
+          '<div class="presswell-transceiver-editor-badge" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-weight:600;"><img src="%1$s" alt="%2$s" width="20" height="20" style="display:block;" /><span>%2$s</span></div>',
           $icon_url,
           $label
         );
 
-        return sprintf( '<div class="presswell-gumshoe-editor-preview">%1$s%2$s</div>', $badge, $content );
+        return sprintf( '<div class="presswell-transceiver-editor-preview">%1$s%2$s</div>', $badge, $content );
       }
 
       if ( GFCommon::is_entry_detail() ) {
@@ -208,7 +215,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
       $original_label       = $this->label;
       $original_description = $this->description;
 
-      $this->label       = 'Gumshoe';
+      $this->label       = 'Tracking';
       $this->description = '';
 
       $content = parent::get_field_content( $value, $lead_id, $form_id );
@@ -221,6 +228,14 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
 
     /**
      * Display all stored tracking pairs inside the entry detail view.
+     *
+     * @param mixed  $value    Entry value.
+     * @param string $currency Entry currency.
+     * @param bool   $use_text Return as text.
+     * @param string $format   Output format.
+     * @param string $media    Output media.
+     *
+     * @return string
      */
     public function get_value_entry_detail( $value, $currency = '', $use_text = false, $format = 'html', $media = 'screen' ) {
       $pairs = $this->filter_empty_pairs( $this->get_tracking_value_pairs( $value ) );
@@ -251,6 +266,14 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
 
     /**
      * Surface a concise summary on the entries list table.
+     *
+     * @param mixed $value   Entry value.
+     * @param array $entry   Entry payload.
+     * @param mixed $field_id Field id.
+     * @param mixed $columns Columns array.
+     * @param mixed $form    Form payload.
+     *
+     * @return string
      */
     public function get_value_entry_list( $value, $entry, $field_id, $columns, $form ) {
       $pairs = $this->get_tracking_value_pairs( $entry );
@@ -265,14 +288,14 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     }
 
     /**
-     * Convert stored entry values into a key => value map matching the tracking keys.
+     * Convert stored entry values into key/value pairs.
      *
-     * @param array|string $raw Raw entry value passed by Gravity Forms.
+     * @param mixed $raw Raw entry value passed by Gravity Forms.
      *
      * @return array
      */
     private function get_tracking_value_pairs( $raw ) {
-      $keys = Presswell_GF_Tracking_Field::get_tracking_keys();
+      $keys = $this->service()->get_tracking_keys( 'gravityforms' );
       if ( empty( $keys ) ) {
         return [];
       }
@@ -287,7 +310,8 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
         if ( null === $value && isset( $source[ $key ] ) ) {
           $value = $source[ $key ];
         }
-        $pairs[ $key ] = Presswell_GF_Tracking_Field::sanitize_tracking_value( $key, $value );
+
+        $pairs[ $key ] = $this->service()->sanitize_tracking_value( $key, $value );
         $index++;
       }
 
@@ -295,7 +319,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     }
 
     /**
-     * Attempt to load the full entry array when running inside the entry detail screen.
+     * Attempt to load full entry array in entry detail context.
      *
      * @return array
      */
@@ -326,7 +350,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     }
 
     /**
-     * Normalize serialized or JSON encoded values into an array.
+     * Normalize serialized or JSON-encoded values into arrays.
      *
      * @param mixed $raw Potentially serialized value.
      *
@@ -353,7 +377,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     }
 
     /**
-     * Remove empty values from the key/value map.
+     * Remove empty values from a key/value map.
      *
      * @param array $pairs Key/value map.
      *
@@ -369,7 +393,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     }
 
     /**
-     * Format the key/value map into "key: value" strings.
+     * Format pairs as key/value strings.
      *
      * @param array $pairs Key/value map.
      *
@@ -387,13 +411,10 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'GF_Field_Presswell_Tracking'
     /**
      * Ensure Gravity Forms stores array data for each input.
      *
-     * @param array $value Posted value.
-     *
      * @return bool
      */
     public function is_value_submission_array() {
       return true;
     }
-
   }
 }
