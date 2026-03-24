@@ -27,7 +27,7 @@ trait PWSL_Forminator_Trait {
    * Enqueue front-end tracking script for Forminator forms.
    */
   public function maybe_enqueue_forminator_assets() {
-    $this->enqueue_tracking_script();
+    $this->enqueue_tracking_script( PWSL::ADAPTER_FORMINATOR );
   }
 
   /**

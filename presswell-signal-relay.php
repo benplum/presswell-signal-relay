@@ -3,7 +3,7 @@
  * Plugin Name: Presswell Signal Relay
  * Description: Capture UTM and click attribution parameters across a visitor session for supported form plugins.
  * Author: Presswell
- * Version: 1.1.0
+ * Version: 1.2.0
  * Plugin URI: http://wordpress.org/plugins/
  * Author URI: http://presswell.co
  * License: GPLv2 or later
@@ -27,6 +27,8 @@
  * along with Presswell Signal Relay. If not, see <http://www.gnu.org/licenses/>.
  */
 
+// ?utm_source=google&utm_medium=cpc&utm_campaign=winter_launch&utm_content=cta_banner&utm_term=snow_boots&gclid=Cj0KCQiAzbi-ABCD1234&fbclid=fb.9876543210XYZ&msclkid=MSCLKID123456&ttclid=TTCLID-987654&landing_page=https%3A%2F%2Fexample.com%2Fwinter-sale&landing_query=%3Fref%3Dpartner&referrer=https%3A%2F%2Fpartner-site.com
+
 if ( ! defined( 'ABSPATH' ) ) {
   exit;
 }
@@ -40,11 +42,13 @@ require_once __DIR__ . '/includes/services/class-tracking-service.php';
 require_once __DIR__ . '/includes/traits/trait-adapter-assets.php';
 require_once __DIR__ . '/includes/traits/trait-gravity-forms-adapter.php';
 require_once __DIR__ . '/includes/traits/trait-forminator-adapter.php';
+require_once __DIR__ . '/includes/traits/trait-contact-form-7-adapter.php';
 require_once __DIR__ . '/includes/adapters/interface-form-adapter.php';
 require_once __DIR__ . '/includes/adapters/class-adapter-registry.php';
 require_once __DIR__ . '/includes/adapters/class-gravity-forms-adapter.php';
 require_once __DIR__ . '/includes/adapters/class-gravity-forms-field.php';
 require_once __DIR__ . '/includes/adapters/class-forminator-adapter.php';
+require_once __DIR__ . '/includes/adapters/class-contact-form-7-adapter.php';
 
 if ( ! class_exists( 'Presswell_Signal_Relay' ) ) {
 
@@ -84,6 +88,7 @@ if ( ! class_exists( 'Presswell_Signal_Relay' ) ) {
       $this->adapter_registry = new PWSL_Adapter_Registry();
       $this->adapter_registry->add( new PWSL_Gravity_Forms_Adapter( $this->service ) );
       $this->adapter_registry->add( new PWSL_Forminator_Adapter( $this->service ) );
+      $this->adapter_registry->add( new PWSL_Contact_Form_7_Adapter( $this->service ) );
       $this->adapter_registry->register_all();
     }
 

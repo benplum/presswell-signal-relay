@@ -58,7 +58,7 @@ trait PWSL_Gravity_Forms_Trait {
       return;
     }
 
-    $this->enqueue_tracking_script();
+    $this->enqueue_tracking_script( PWSL::ADAPTER_GRAVITY_FORMS );
     $this->enqueue_visibility_styles();
   }
 

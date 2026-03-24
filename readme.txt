@@ -1,6 +1,6 @@
 === Presswell Signal Relay ===
 Contributors: presswell, benplum
-Tags: gravity forms, forminator, attribution, utm, tracking, hidden field, marketing, click id
+Tags: gravity forms, forminator, contact form 7, attribution, utm, tracking, hidden field, marketing, click id
 Requires at least: 6.1
 Tested up to: 6.5
 Stable tag: trunk
@@ -17,6 +17,7 @@ Presswell Signal Relay captures attribution parameters and stores them with supp
 
 * Adds a Tracking field in Gravity Forms under Advanced Fields
 * Injects and stores tracking data for Forminator custom forms
+* Injects and stores tracking data for Contact Form 7 forms
 * Captures common attribution parameters and stores them with submissions
 * Tracks `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `gclid`, `fbclid`, `msclkid`, `ttclid`, `landing_page`, `landing_query`, and `referrer`
 * Persists values in browser localStorage for the current session (1-hour TTL by default)
@@ -41,7 +42,7 @@ Presswell Signal Relay is a new plugin baseline. Legacy helper functions and leg
 **presswell_signal_relay_tracking_keys( $keys, $context )**
 
 * **$keys** (array) (required) - Ordered list of tracking keys that should be captured and stored with each entry.
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, or `forminator`).
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `forminator`, or `contactform7`).
 * Return an indexed array of string keys.
 * These values are used to build hidden inputs and entry-detail output.
 
@@ -61,7 +62,7 @@ add_filter( 'presswell_signal_relay_tracking_keys', function( $keys, $context ) 
 **presswell_signal_relay_tracking_ttl( $ttl, $context )**
 
 * **$ttl** (int) (required) - Session storage lifetime in seconds. Default is `3600` (1 hour).
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, or `forminator`).
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `forminator`, or `contactform7`).
 * Return a positive integer. Invalid values automatically fall back to the default TTL.
 
 Example:
@@ -78,7 +79,7 @@ add_filter( 'presswell_signal_relay_tracking_ttl', function( $ttl, $context ) {
 **presswell_signal_relay_storage_key( $storage_key, $context )**
 
 * **$storage_key** (string) (required) - Browser storage key used for attribution payload.
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, or `forminator`).
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `forminator`, or `contactform7`).
 * Return a non-empty string.
 
 **Default Tracking Keys**
@@ -103,7 +104,8 @@ Install via the WordPress plugin installer or manually upload the folder to `wp-
 1. Activate the plugin.
 2. If using Gravity Forms, edit a form and add the **Tracking** field from *Advanced Fields*.
 3. If using Forminator, publish a custom form (tracking inputs are injected automatically).
-4. Send traffic with UTM/click parameters.
+4. If using Contact Form 7, publish any form (tracking inputs are injected automatically).
+5. Send traffic with UTM/click parameters.
 
 == Frequently Asked Questions ==
 
@@ -130,6 +132,10 @@ Yes. Use the `presswell_signal_relay_tracking_keys` filter to add or remove keys
 3. Gravity Forms entry details with captured attribution values
 
 == Changelog ==
+
+= 1.2.0 =
+* Added Contact Form 7 adapter and submission sanitization.
+* Added adapter-aware script localization context handling.
 
 = 1.1.0 =
 * Renamed plugin to Presswell Signal Relay.

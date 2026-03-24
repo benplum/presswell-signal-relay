@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class PWSL {
 
-  const VERSION = '1.1.0';
+  const VERSION = '1.2.0';
   const TEXT_DOMAIN = 'presswell-signal-relay';
 
   const FIELD_TYPE = 'presswell_transceiver';
@@ -25,6 +25,7 @@ final class PWSL {
 
   const ADAPTER_GRAVITY_FORMS = 'gravityforms';
   const ADAPTER_FORMINATOR = 'forminator';
+  const ADAPTER_CONTACT_FORM_7 = 'contactform7';
 
   /**
    * Cached singleton instance.

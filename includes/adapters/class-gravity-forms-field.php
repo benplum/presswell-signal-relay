@@ -215,7 +215,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWSL_Gravity_Forms_Field' ) 
       $original_label       = $this->label;
       $original_description = $this->description;
 
-      $this->label       = 'Tracking';
+      $this->label       = 'Signals';
       $this->description = '';
 
       $content = parent::get_field_content( $value, $lead_id, $form_id );

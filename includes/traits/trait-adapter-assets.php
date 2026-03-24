@@ -30,8 +30,10 @@ trait PWSL_Adapter_Assets_Trait {
 
   /**
    * Enqueue and localize tracking script.
+   *
+   * @param string $context Integration context.
    */
-  protected function enqueue_tracking_script() {
+  protected function enqueue_tracking_script( $context = 'core' ) {
     $this->register_tracking_assets();
 
     wp_enqueue_script( PWSL::ASSET_HANDLE_SCRIPT );
@@ -43,7 +45,7 @@ trait PWSL_Adapter_Assets_Trait {
     wp_localize_script(
       PWSL::ASSET_HANDLE_SCRIPT,
       PWSL::JS_OBJECT,
-      $this->service->get_client_config()
+      $this->service->get_client_config( $context )
     );
 
     $this->localized_objects[ PWSL::JS_OBJECT ] = true;
