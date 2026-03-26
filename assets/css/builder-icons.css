@@ -21,6 +21,10 @@
   margin-right: 6px;
 }
 
+.frm_add_field .pwtsr-radar-icon {
+  margin-right: 6px;
+}
+
 .wpforms-add-fields-button .pwtsr-radar-icon {
   background-image: url('../svg/radar-white.svg');
 }

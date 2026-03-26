@@ -10,13 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 trait PWTSR_Formidable_Trait {
 
   /**
-   * Stores sanitized tracking values until the entry id is available.
-   *
-   * @var array
-   */
-  private $pending_formidable_tracking = [];
-
-  /**
    * Initialize Formidable hooks when available.
    */
   public function maybe_bootstrap_formidable() {
@@ -25,12 +18,64 @@ trait PWTSR_Formidable_Trait {
     }
 
     add_action( 'frm_enqueue_form_scripts', [ $this, 'maybe_enqueue_formidable_assets' ], 20, 1 );
-    add_action( 'frm_entry_form', [ $this, 'render_formidable_tracking_inputs' ], 20, 3 );
+    add_filter( 'frm_available_fields', [ $this, 'register_formidable_transceiver_field_type' ], 20 );
+    add_filter( 'frm_get_field_type_class', [ $this, 'register_formidable_transceiver_field_class' ], 20, 2 );
+    add_action( 'admin_print_footer_scripts', [ $this, 'print_formidable_radar_icon_symbol' ], 20 );
     add_filter( 'frm_pre_create_entry', [ $this, 'sanitize_formidable_submission_values' ], 20, 1 );
-    add_action( 'frm_after_create_entry', [ $this, 'persist_formidable_tracking_values' ], 5, 3 );
+    add_filter( 'frm_display_value_custom', [ $this, 'format_formidable_tracking_display_value' ], 20, 3 );
     add_action( 'frm_show_entry', [ $this, 'render_formidable_tracking_block' ], 20, 1 );
     add_filter( 'frm_helper_shortcodes', [ $this, 'register_formidable_tracking_helper_shortcodes' ], 20, 2 );
     add_filter( 'frm_content', [ $this, 'replace_formidable_tracking_tokens' ], 30, 3 );
+  }
+
+  /**
+   * Print radar icon symbol for Formidable builder icon <use> references.
+   */
+  public function print_formidable_radar_icon_symbol() {
+    if ( ! is_admin() ) {
+      return;
+    }
+
+    $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+    if ( ! $screen || ! isset( $screen->id ) || false === strpos( (string) $screen->id, 'formidable' ) ) {
+      return;
+    }
+
+    static $printed = false;
+    if ( $printed ) {
+      return;
+    }
+    $printed = true;
+
+    $svg_path = plugin_dir_path( Presswell_Tracking_Signal_Relay::PLUGIN_FILE ) . 'assets/svg/radar.svg';
+    if ( ! file_exists( $svg_path ) || ! is_readable( $svg_path ) ) {
+      return;
+    }
+
+    $svg_markup = file_get_contents( $svg_path ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+    if ( ! is_string( $svg_markup ) || '' === $svg_markup ) {
+      return;
+    }
+
+    $view_box = '0 0 21 21';
+    if ( preg_match( '/viewBox="([^"]+)"/i', $svg_markup, $view_box_match ) ) {
+      $view_box = $view_box_match[1];
+    }
+
+    $path_data = '';
+    if ( preg_match( '/<path[^>]*d="([^"]+)"[^>]*>/i', $svg_markup, $path_match ) ) {
+      $path_data = $path_match[1];
+    }
+
+    if ( '' === $path_data ) {
+      return;
+    }
+
+    echo sprintf(
+      '<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><symbol id="pwtsr-radar-icon" viewBox="%1$s"><path fill="currentColor" d="%2$s" /></symbol></svg>',
+      esc_attr( $view_box ),
+      esc_attr( $path_data )
+    );
   }
 
   /**
@@ -39,31 +84,50 @@ trait PWTSR_Formidable_Trait {
    * @param array $params Formidable form params.
    */
   public function maybe_enqueue_formidable_assets( $params = [] ) {
+    $form_id = is_array( $params ) && isset( $params['form_id'] ) ? absint( $params['form_id'] ) : 0;
+    if ( ! $this->formidable_form_has_transceiver_field( $form_id ) ) {
+      return;
+    }
+
     $this->enqueue_tracking_script( PWTSR::ADAPTER_FORMIDABLE );
   }
 
   /**
-   * Inject hidden tracking inputs into Formidable form markup.
+   * Register the Tracking field in Formidable's field picker.
    *
-    * @param mixed  $form        Formidable form model.
-    * @param string $form_action Current form action.
-    * @param array  $errors      Validation errors.
+   * @param array $fields Existing field definitions.
+   *
+   * @return array
    */
-  public function render_formidable_tracking_inputs( $form, $form_action, $errors ) {
-    $inputs = [];
-    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMIDABLE ) as $key ) {
-      $inputs[] = $this->render_transceiver_input_markup(
-        $key,
-        'item_meta[' . $key . ']',
-        'presswell-formidable-' . sanitize_html_class( $key )
-      );
+  public function register_formidable_transceiver_field_type( $fields ) {
+    if ( ! is_array( $fields ) ) {
+      $fields = [];
     }
 
-    if ( empty( $inputs ) ) {
-      return;
+    if ( ! isset( $fields[ PWTSR::FIELD_TYPE ] ) ) {
+      $fields[ PWTSR::FIELD_TYPE ] = [
+        'name' => __( 'Tracking', PWTSR::TEXT_DOMAIN ),
+        'icon' => 'frmfont pwtsr-radar-icon',
+      ];
     }
 
-    echo $this->wrap_transceiver_inputs_markup( 'formidable', implode( '', $inputs ) );
+    return $fields;
+  }
+
+  /**
+   * Map the Presswell Formidable field type to its custom class.
+   *
+   * @param string $class      Existing class name.
+   * @param string $field_type Field type slug.
+   *
+   * @return string
+   */
+  public function register_formidable_transceiver_field_class( $class, $field_type ) {
+    if ( PWTSR::FIELD_TYPE === $field_type && class_exists( 'PWTSR_Formidable_Field' ) ) {
+      return 'PWTSR_Formidable_Field';
+    }
+
+    return $class;
   }
 
   /**
@@ -82,100 +146,65 @@ trait PWTSR_Formidable_Trait {
       $values['item_meta'] = [];
     }
 
-    $pairs = [];
-    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMIDABLE ) as $key ) {
-      if ( ! isset( $values['item_meta'][ $key ] ) || is_array( $values['item_meta'][ $key ] ) ) {
-        continue;
-      }
-
-      $clean = $this->service->sanitize_tracking_value( $key, $values['item_meta'][ $key ] );
-      $values['item_meta'][ $key ] = $clean;
-
-      if ( '' !== $clean ) {
-        $pairs[ $key ] = $clean;
-      }
+    $form_id   = isset( $values['form_id'] ) ? absint( $values['form_id'] ) : 0;
+    $field_ids = $this->get_formidable_transceiver_field_ids( $form_id );
+    if ( empty( $field_ids ) ) {
+      return $values;
     }
 
-    $this->pending_formidable_tracking = $pairs;
+    $posted_tracking = [];
+    if ( isset( $values['pwtsr_tracking'] ) && is_array( $values['pwtsr_tracking'] ) ) {
+      $posted_tracking = $values['pwtsr_tracking'];
+    } elseif ( isset( $_POST['pwtsr_tracking'] ) && is_array( $_POST['pwtsr_tracking'] ) ) {
+      $posted_tracking = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
+    }
+
+    foreach ( $field_ids as $field_id ) {
+      $raw = null;
+      if ( isset( $posted_tracking[ $field_id ] ) ) {
+        $raw = $posted_tracking[ $field_id ];
+      } elseif ( isset( $values['item_meta'][ $field_id ] ) ) {
+        $raw = $values['item_meta'][ $field_id ];
+      }
+
+      $pairs = $this->normalize_formidable_tracking_pairs( $raw );
+      $values['item_meta'][ $field_id ] = $pairs;
+    }
+
+    unset( $values['pwtsr_tracking'] );
 
     return $values;
   }
 
   /**
-   * Persist tracking pairs after Formidable creates an entry.
+   * Render Tracking values as readable lines instead of serialized array output.
    *
-    * @param int   $entry_id Created entry id.
-    * @param int   $form_id  Formidable form id.
-    * @param array $args     Additional context.
+   * @param mixed  $value Current display value.
+   * @param object $field Field object.
+   * @param array  $atts  Display attributes.
+   *
+   * @return mixed
    */
-  public function persist_formidable_tracking_values( $entry_id, $form_id, $args ) {
-    $entry_id = absint( $entry_id );
-    if ( ! $entry_id ) {
-      return;
+  public function format_formidable_tracking_display_value( $value, $field, $atts ) {
+    if ( ! is_object( $field ) || ! isset( $field->type ) || PWTSR::FIELD_TYPE !== $field->type ) {
+      return $value;
     }
 
-    $pairs = $this->pending_formidable_tracking;
+    $pairs = $this->normalize_formidable_tracking_pairs( $value );
     if ( empty( $pairs ) ) {
-      return;
+      return '';
     }
 
-    global $wpdb;
-    $table    = $wpdb->prefix . 'frm_item_metas';
-    $meta_key = 'presswell_tracking_signal_relay_tracking';
-
-    $existing_id = 0;
-    $rows        = $wpdb->get_results(
-      $wpdb->prepare(
-        "SELECT id, meta_value FROM {$table} WHERE item_id = %d AND field_id = 0",
-        $entry_id
-      )
-    );
-
-    if ( is_array( $rows ) ) {
-      foreach ( $rows as $row ) {
-        if ( ! is_object( $row ) || ! isset( $row->meta_value ) ) {
-          continue;
-        }
-
-        $decoded = maybe_unserialize( $row->meta_value );
-        if ( ! is_array( $decoded ) || empty( $decoded['meta_key'] ) ) {
-          continue;
-        }
-
-        if ( 'presswell_tracking_signal_relay_tracking' === $decoded['meta_key'] ) {
-          $existing_id = isset( $row->id ) ? absint( $row->id ) : 0;
-          break;
-        }
-      }
+    $lines = [];
+    foreach ( $pairs as $key => $tracked_value ) {
+      $lines[] = $key . ': ' . $tracked_value;
     }
 
-    $stored = [
-      'meta_key' => $meta_key,
-      'pairs'    => $pairs,
-    ];
-
-    if ( $existing_id ) {
-      $wpdb->update(
-        $table,
-        [ 'meta_value' => maybe_serialize( $stored ) ],
-        [ 'id' => $existing_id ],
-        [ '%s' ],
-        [ '%d' ]
-      );
-    } else {
-      $wpdb->insert(
-        $table,
-        [
-          'item_id'    => $entry_id,
-          'field_id'   => 0,
-          'meta_value' => maybe_serialize( $stored ),
-          'created_at' => current_time( 'mysql', 1 ),
-        ],
-        [ '%d', '%d', '%s', '%s' ]
-      );
+    if ( is_array( $atts ) && ! empty( $atts['html'] ) ) {
+      return implode( '<br />', array_map( 'esc_html', $lines ) );
     }
 
-    $this->pending_formidable_tracking = [];
+    return implode( "\n", $lines );
   }
 
   /**
@@ -188,7 +217,7 @@ trait PWTSR_Formidable_Trait {
       return;
     }
 
-    $pairs = $this->get_formidable_tracking_pairs( (int) $entry->id );
+    $pairs = $this->get_formidable_tracking_pairs( (int) $entry->id, isset( $entry->form_id ) ? (int) $entry->form_id : 0 );
     if ( empty( $pairs ) ) {
       return;
     }
@@ -268,10 +297,7 @@ trait PWTSR_Formidable_Trait {
       return $content;
     }
 
-    $pairs = $this->get_formidable_tracking_pairs( (int) $entry_object->id );
-    if ( empty( $pairs ) ) {
-      $pairs = $this->pending_formidable_tracking;
-    }
+    $pairs = $this->get_formidable_tracking_pairs( (int) $entry_object->id, isset( $entry_object->form_id ) ? (int) $entry_object->form_id : 0 );
 
     $all_lines = [];
     foreach ( $pairs as $key => $value ) {
@@ -321,38 +347,97 @@ trait PWTSR_Formidable_Trait {
    *
    * @return array
    */
-  private function get_formidable_tracking_pairs( $entry_id ) {
-    global $wpdb;
-
-    $table = $wpdb->prefix . 'frm_item_metas';
-    $rows  = $wpdb->get_col(
-      $wpdb->prepare(
-        "SELECT meta_value FROM {$table} WHERE item_id = %d AND field_id = 0",
-        $entry_id
-      )
-    );
-
-    if ( empty( $rows ) || ! is_array( $rows ) ) {
+  private function get_formidable_tracking_pairs( $entry_id, $form_id = 0 ) {
+    if ( ! class_exists( 'FrmEntryMeta' ) ) {
       return [];
     }
 
-    foreach ( $rows as $raw ) {
-      $decoded = maybe_unserialize( $raw );
-      if ( ! is_array( $decoded ) ) {
-        continue;
+    foreach ( $this->get_formidable_transceiver_field_ids( $form_id ) as $field_id ) {
+      $pairs = $this->normalize_formidable_tracking_pairs( FrmEntryMeta::get_entry_meta_by_field( $entry_id, $field_id ) );
+      if ( ! empty( $pairs ) ) {
+        return $pairs;
       }
-
-      if ( empty( $decoded['meta_key'] ) || 'presswell_tracking_signal_relay_tracking' !== $decoded['meta_key'] ) {
-        continue;
-      }
-
-      if ( empty( $decoded['pairs'] ) || ! is_array( $decoded['pairs'] ) ) {
-        return [];
-      }
-
-      return $decoded['pairs'];
     }
 
     return [];
+  }
+
+  /**
+   * Determine if a Formidable form includes the Presswell Tracking field.
+   *
+   * @param int $form_id Form id.
+   *
+   * @return bool
+   */
+  private function formidable_form_has_transceiver_field( $form_id ) {
+    return ! empty( $this->get_formidable_transceiver_field_ids( $form_id ) );
+  }
+
+  /**
+   * Return Tracking field ids present in a Formidable form.
+   *
+   * @param int $form_id Form id.
+   *
+   * @return int[]
+   */
+  private function get_formidable_transceiver_field_ids( $form_id ) {
+    $form_id = absint( $form_id );
+    if ( ! $form_id || ! class_exists( 'FrmField' ) ) {
+      return [];
+    }
+
+    $ids    = [];
+    $fields = FrmField::get_all_types_in_form( $form_id, PWTSR::FIELD_TYPE );
+    if ( empty( $fields ) ) {
+      return [];
+    }
+
+    foreach ( $fields as $field ) {
+      if ( is_object( $field ) && ! empty( $field->id ) ) {
+        $ids[] = absint( $field->id );
+      }
+    }
+
+    return array_values( array_filter( array_unique( $ids ) ) );
+  }
+
+  /**
+   * Normalize and sanitize submitted/saved Formidable tracking payload.
+   *
+   * @param mixed $raw Raw meta value.
+   *
+   * @return array
+   */
+  private function normalize_formidable_tracking_pairs( $raw ) {
+    if ( is_string( $raw ) ) {
+      $decoded = json_decode( $raw, true );
+      if ( is_array( $decoded ) ) {
+        $raw = $decoded;
+      } else {
+        $raw = maybe_unserialize( $raw );
+      }
+    }
+
+    if ( is_object( $raw ) ) {
+      $raw = (array) $raw;
+    }
+
+    if ( ! is_array( $raw ) ) {
+      return [];
+    }
+
+    $pairs = [];
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMIDABLE ) as $key ) {
+      if ( ! isset( $raw[ $key ] ) || is_array( $raw[ $key ] ) || is_object( $raw[ $key ] ) ) {
+        continue;
+      }
+
+      $clean = $this->service->sanitize_tracking_value( $key, $raw[ $key ] );
+      if ( '' !== $clean ) {
+        $pairs[ $key ] = $clean;
+      }
+    }
+
+    return $pairs;
   }
 }

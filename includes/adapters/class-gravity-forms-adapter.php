@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Gravity Forms adapter for Presswell Tracking Signal Relay.
+ * Capture method: custom field type (Presswell Tracking field).
  */
 class PWTSR_Gravity_Forms_Adapter implements PWTSR_Form_Adapter_Interface {
   use PWTSR_Adapter_Assets_Trait;

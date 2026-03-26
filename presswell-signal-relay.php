@@ -3,7 +3,7 @@
  * Plugin Name: Presswell Tracking Signal Relay
  * Description: Capture UTM and click attribution parameters across a visitor session for supported form plugins.
  * Author: Presswell
- * Version: 1.2.0
+ * Version: 1.0.0
  * Plugin URI: http://wordpress.org/plugins/
  * Author URI: http://presswell.co
  * License: GPLv2 or later

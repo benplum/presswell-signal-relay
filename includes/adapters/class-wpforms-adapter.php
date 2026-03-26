@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * WPForms adapter for Presswell Tracking Signal Relay.
+ * Capture method: custom field type (Presswell Tracking field).
  */
 class PWTSR_WPForms_Adapter implements PWTSR_Form_Adapter_Interface {
   use PWTSR_Adapter_Assets_Trait;

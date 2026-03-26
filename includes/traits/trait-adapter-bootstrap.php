@@ -34,7 +34,7 @@ trait PWTSR_Adapter_Bootstrap_Trait {
   }
 
   /**
-   * Enqueue custom builder icon styles on WPForms/Fluent Forms admin screens.
+   * Enqueue custom builder icon styles on supported form builder admin screens.
    */
   public function maybe_enqueue_builder_icon_styles() {
     if ( ! is_admin() ) {
@@ -59,8 +59,11 @@ trait PWTSR_Adapter_Bootstrap_Trait {
       || false !== strpos( $page, 'fluentform' )
       || false !== strpos( $screen_id, 'fluent_forms' )
       || false !== strpos( $page, 'fluent_forms' );
+    $is_formidable_screen = false !== strpos( $screen_id, 'formidable' )
+      || false !== strpos( $page, 'formidable' )
+      || 0 === strpos( $page, 'frm-' );
 
-    if ( ! $is_wpforms_screen && ! $is_fluent_screen ) {
+    if ( ! $is_wpforms_screen && ! $is_fluent_screen && ! $is_formidable_screen ) {
       return;
     }
 
@@ -173,6 +176,7 @@ trait PWTSR_Adapter_Bootstrap_Trait {
         'files'    => [
           'includes/traits/trait-adapter-assets.php',
           'includes/traits/trait-formidable-adapter.php',
+          'includes/adapters/class-formidable-field.php',
           'includes/adapters/class-formidable-adapter.php',
         ],
       ],

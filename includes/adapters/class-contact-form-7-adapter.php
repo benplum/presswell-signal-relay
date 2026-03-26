@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Contact Form 7 adapter for Presswell Tracking Signal Relay.
+ * Capture method: HTML injection (hidden inputs appended at render time).
  */
 class PWTSR_Contact_Form_7_Adapter implements PWTSR_Form_Adapter_Interface {
   use PWTSR_Adapter_Assets_Trait;

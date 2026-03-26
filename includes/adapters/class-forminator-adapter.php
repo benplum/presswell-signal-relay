@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Forminator adapter for Presswell Tracking Signal Relay.
+ * Capture method: HTML injection (hidden inputs appended at render time).
  */
 class PWTSR_Forminator_Adapter implements PWTSR_Form_Adapter_Interface {
   use PWTSR_Adapter_Assets_Trait;

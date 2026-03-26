@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 final class PWTSR {
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.0.0';
   const TEXT_DOMAIN = 'presswell-signal-relay';
   const SETTINGS_KEY = 'pwtsr_settings';
   const SETTINGS_PAGE_SLUG = 'presswell-signal-relay';
