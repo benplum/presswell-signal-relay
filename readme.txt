@@ -1,19 +1,19 @@
 === Presswell Tracking Signal Relay ===
 Contributors: presswell, benplum
-Tags: attribution, utm, tracking, marketing
+Tags: attribution, utm, tracking, marketing, lead tracking, forms, gravity forms, wpforms, contact form 7, fluent forms, forminator, formidable
 Requires at least: 6.1
 Tested up to: 6.5
 Stable tag: trunk
 License: GNU General Public License v2.0 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Capture UTM and click tracking parameters across a visitor session.
+Capture attribution query parameters and relay them into supported WordPress form submissions.
 
 == Description ==
 
-Presswell Tracking Signal Relay captures attribution parameters and stores them with supported form plugin submissions. The plugin reads query parameters from the current URL, merges them with stored values, and keeps them available for later form views during the same visitor session.
+Presswell Tracking Signal Relay captures attribution parameters and stores them with supported form submissions. It reads query parameters from the current URL, merges them with previously stored values, and keeps them available for later form views in the same session.
 
-Supported Form Plugins:
+**Supported Form Plugins**
 
 * Gravity Forms
 * WPForms
@@ -26,8 +26,9 @@ Supported Form Plugins:
 
 * Captures common attribution parameters and stores them with submissions
 * Tracks `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `gclid`, `fbclid`, `msclkid`, `ttclid`, `landing_page`, `landing_query`, and `referrer`
-* Persists values in browser localStorage for the visitor session (1-hour TTL by default)
-* Automatically populates hidden field inputs when forms render
+* Persists values in browser localStorage with a 1-hour TTL by default
+* Automatically populates hidden tracking fields when supported forms render
+* Supports per-site custom parameters from plugin settings
 
 = Documentation =
 
@@ -49,16 +50,14 @@ Supported Form Plugins:
 
 Example:
 
-`
-add_filter( 'pwtsr_tracking_keys', function( $keys, $context ) {
-    if ( 'gravityforms' !== $context ) {
+    add_filter( 'pwtsr_tracking_keys', function( $keys, $context ) {
+        if ( 'gravityforms' !== $context ) {
+            return $keys;
+        }
+        $keys[] = 'custom_param';
+        $keys[] = 'utm_id';
         return $keys;
-    }
-    $keys[] = 'custom_param';
-    $keys[] = 'utm_id';
-    return $keys;
-}, 10, 2 );
-`
+    }, 10, 2 );
 
 **pwtsr_tracking_ttl( $ttl, $context )**
 
@@ -68,14 +67,12 @@ add_filter( 'pwtsr_tracking_keys', function( $keys, $context ) {
 
 Example:
 
-`
-add_filter( 'pwtsr_tracking_ttl', function( $ttl, $context ) {
-    if ( 'core' !== $context ) {
-        return $ttl;
-    }
-    return DAY_IN_SECONDS * 7;
-}, 10, 2 );
-`
+    add_filter( 'pwtsr_tracking_ttl', function( $ttl, $context ) {
+        if ( 'core' !== $context ) {
+            return $ttl;
+        }
+        return DAY_IN_SECONDS * 7;
+    }, 10, 2 );
 
 **pwtsr_storage_key( $storage_key, $context )**
 
@@ -98,6 +95,14 @@ add_filter( 'pwtsr_tracking_ttl', function( $ttl, $context ) {
 * `landing_query`
 * `referrer`
 
+**Settings and Debug Display**
+
+Use *Settings -> Tracking Signal Relay* to:
+
+* Add custom query parameter keys.
+* Enable Debug Display for logged-in editors/admins.
+* Inspect tracking field wrappers on the frontend while validating form output.
+
 == Installation ==
 
 Install via the WordPress plugin installer or manually upload the folder to `wp-content/plugins/`.
@@ -106,10 +111,10 @@ Install via the WordPress plugin installer or manually upload the folder to `wp-
 2. If using Gravity Forms, edit a form and add the **Tracking** field from *Advanced Fields*.
 3. If using WPForms, edit a form and add the **Tracking** field.
 4. If using Fluent Forms, edit a form and add the **Tracking** field.
-6. If using Forminator, publish a custom form (tracking inputs are injected automatically).
-7. If using Contact Form 7, publish any form (tracking inputs are injected automatically).
-8. If using Formidable, edit a form and add the **Tracking** field.
-9. Send traffic with UTM/click parameters.
+5. If using Formidable Forms, edit a form and add the **Tracking** field.
+6. If using Contact Form 7, publish any form (tracking inputs are injected automatically).
+7. If using Forminator, publish a custom form (tracking inputs are injected automatically).
+8. Send traffic with UTM/click parameters.
 
 == Frequently Asked Questions ==
 
@@ -127,19 +132,23 @@ By default, one hour. You can change the TTL with the `pwtsr_tracking_ttl` filte
 
 = Can I track additional custom parameters? =
 
-Yes. Use the `pwtsr_tracking_keys` filter to add or remove keys.
+Yes. Use the `pwtsr_tracking_keys` filter or add custom parameters in *Settings -> Tracking Signal Relay*.
 
 = Why isn't my form plugin supported? =
 
 We plan to support additional form ecosystems, but each integration requires reliable extension points for hidden field rendering, submission lifecycle hooks, entry persistence, and token/merge-tag resolution. Some form plugins do not expose these capabilities consistently enough to deliver a production-ready adapter. We are also prioritizing support for plugins with transparent licensing, complete core functionality, and a respectful user experience.
 
+== Privacy ==
+
+Tracking values are stored in browser localStorage and submitted only through supported form entries on your site. This plugin does not send attribution data to third-party services by default.
+
 == Screenshots ==
 
-1. Gravity Forms editor showing the Tracking field in Advanced Fields
-2. Tracking field settings and hidden input mapping
-3. Gravity Forms entry details with captured attribution values
+1. Form builder view with the Tracking field available.
+2. Frontend debug display showing populated tracking fields.
+3. Entry details view with captured attribution values.
 
 == Changelog ==
 
 = 1.0.0 =
-* Initial release.
+* First public release.
