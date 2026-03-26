@@ -17,7 +17,7 @@ class PWTSR_Tracking_Service {
    * @return string[]
    */
   public function get_tracking_keys( $context = 'core' ) {
-    $keys = apply_filters( 'presswell_tracking_signal_relay_tracking_keys', PWTSR::DEFAULT_TRACKING_KEYS, $context );
+    $keys = apply_filters( 'pwtsr_tracking_keys', PWTSR::DEFAULT_TRACKING_KEYS, $context );
 
     return $this->sanitize_keys( $keys );
   }
@@ -30,7 +30,7 @@ class PWTSR_Tracking_Service {
    * @return int
    */
   public function get_ttl_seconds( $context = 'core' ) {
-    $ttl = (int) apply_filters( 'presswell_tracking_signal_relay_tracking_ttl', PWTSR::TTL_SECONDS, $context );
+    $ttl = (int) apply_filters( 'pwtsr_tracking_ttl', PWTSR::TTL_SECONDS, $context );
 
     return $ttl > 0 ? $ttl : PWTSR::TTL_SECONDS;
   }
@@ -43,7 +43,7 @@ class PWTSR_Tracking_Service {
    * @return array
    */
   public function get_client_config( $context = 'core' ) {
-    $storage_key = (string) apply_filters( 'presswell_tracking_signal_relay_storage_key', PWTSR::STORAGE_KEY, $context );
+    $storage_key = (string) apply_filters( 'pwtsr_storage_key', PWTSR::STORAGE_KEY, $context );
     if ( '' === $storage_key ) {
       $storage_key = PWTSR::STORAGE_KEY;
     }

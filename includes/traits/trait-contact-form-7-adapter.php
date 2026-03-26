@@ -160,7 +160,7 @@ trait PWTSR_Contact_Form_7_Trait {
    */
   public function append_contact_form_7_tracking_to_mail( $components, $contact_form, $mail ) {
     $enabled = (bool) apply_filters(
-      'presswell_tracking_signal_relay_cf7_auto_append_tracking',
+      'pwtsr_cf7_auto_append_tracking',
       false,
       $contact_form,
       $mail
@@ -181,7 +181,7 @@ trait PWTSR_Contact_Form_7_Trait {
     }
 
     $is_html = ! empty( $mail['use_html'] );
-    $label   = (string) apply_filters( 'presswell_tracking_signal_relay_cf7_tracking_label', 'Tracking' );
+    $label   = (string) apply_filters( 'pwtsr_cf7_tracking_label', 'Tracking' );
     $payload = $this->format_contact_form_7_tracking_pairs( $pairs, $is_html );
 
     if ( $is_html ) {

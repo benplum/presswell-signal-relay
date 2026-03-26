@@ -1,6 +1,6 @@
 === Presswell Tracking Signal Relay ===
 Contributors: presswell, benplum
-Tags: gravity forms, forminator, contact form 7, attribution, utm, tracking, hidden field, marketing, click id
+Tags: gravity forms, contact form 7, forminator, formidable forms, attribution, utm, tracking, hidden field, marketing, click id
 Requires at least: 6.1
 Tested up to: 6.5
 Stable tag: trunk
@@ -13,14 +13,22 @@ Capture UTM and click tracking parameters across a visitor session.
 
 Presswell Tracking Signal Relay captures attribution parameters and stores them with supported form plugin submissions.
 
+Supported Form Plugins:
+
+* Gravity Forms
+* Contact Form 7
+* Forminator
+* Formidable Forms
+
 **Features**
 
 * Adds a Tracking field in Gravity Forms under Advanced Fields
 * Injects and stores tracking data for Forminator custom forms
 * Injects and stores tracking data for Contact Form 7 forms
+* Injects and stores tracking data for Formidable forms
 * Captures common attribution parameters and stores them with submissions
 * Tracks `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`, `gclid`, `fbclid`, `msclkid`, `ttclid`, `landing_page`, `landing_query`, and `referrer`
-* Persists values in browser localStorage for the current session (1-hour TTL by default)
+* Persists values in browser localStorage for the visitor session (1-hour TTL by default)
 * Automatically populates hidden field inputs when forms render
 * Uses adapter-based integrations so additional form systems can be added cleanly
 * Enforces a single tracking field per Gravity Forms form to avoid duplicate data
@@ -31,25 +39,21 @@ The plugin reads query parameters from the current URL, merges them with stored 
 
 ***Form Entry Integration***
 
-When a supported form renders, hidden inputs are generated and populated automatically so data arrives in the entry without custom template code.
-
-***Compatibility Note***
-
-Presswell Tracking Signal Relay is a new plugin baseline. Legacy helper functions and legacy `presswell_gf_*` / `presswell_forminator_*` filter hooks are not included.
+When a supported form renders, hidden inputs are generated and populated automatically so data is stored with the form entry without custom template code.
 
 = Documentation =
 
-**presswell_tracking_signal_relay_tracking_keys( $keys, $context )**
+**pwtsr_tracking_keys( $keys, $context )**
 
 * **$keys** (array) (required) - Ordered list of tracking keys that should be captured and stored with each entry.
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `forminator`, or `contactform7`).
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `contactform7`, `forminator`, or `formidable`).
 * Return an indexed array of string keys.
 * These values are used to build hidden inputs and entry-detail output.
 
 Example:
 
 `
-add_filter( 'presswell_tracking_signal_relay_tracking_keys', function( $keys, $context ) {
+add_filter( 'pwtsr_tracking_keys', function( $keys, $context ) {
     if ( 'gravityforms' !== $context ) {
         return $keys;
     }
@@ -59,16 +63,16 @@ add_filter( 'presswell_tracking_signal_relay_tracking_keys', function( $keys, $c
 }, 10, 2 );
 `
 
-**presswell_tracking_signal_relay_tracking_ttl( $ttl, $context )**
+**pwtsr_tracking_ttl( $ttl, $context )**
 
 * **$ttl** (int) (required) - Session storage lifetime in seconds. Default is `3600` (1 hour).
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `forminator`, or `contactform7`).
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `contactform7`, `forminator`, or `formidable`).
 * Return a positive integer. Invalid values automatically fall back to the default TTL.
 
 Example:
 
 `
-add_filter( 'presswell_tracking_signal_relay_tracking_ttl', function( $ttl, $context ) {
+add_filter( 'pwtsr_tracking_ttl', function( $ttl, $context ) {
     if ( 'core' !== $context ) {
         return $ttl;
     }
@@ -76,10 +80,10 @@ add_filter( 'presswell_tracking_signal_relay_tracking_ttl', function( $ttl, $con
 }, 10, 2 );
 `
 
-**presswell_tracking_signal_relay_storage_key( $storage_key, $context )**
+**pwtsr_storage_key( $storage_key, $context )**
 
-* **$storage_key** (string) (required) - Browser storage key used for attribution payload.
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `forminator`, or `contactform7`).
+* **$storage_key** (string) (required) - Browser storage key used for the attribution payload.
+* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `contactform7`, `forminator`, or `formidable`).
 * Return a non-empty string.
 
 **Contact Form 7 Mail Output**
@@ -98,7 +102,7 @@ An alias is also supported:
 [pwsr_transceiver]
 `
 
-Each outputs non-empty values as key/value lines.
+Each tag outputs non-empty values as key/value lines.
 
 **Optional Auto-Append for Contact Form 7 Mail**
 
@@ -107,13 +111,13 @@ By default, transceiver values are not auto-appended to mail bodies.
 Enable auto-append with:
 
 `
-add_filter( 'presswell_tracking_signal_relay_cf7_auto_append_tracking', '__return_true' );
+add_filter( 'pwtsr_cf7_auto_append_tracking', '__return_true' );
 `
 
 Optional custom section label:
 
 `
-add_filter( 'presswell_tracking_signal_relay_cf7_tracking_label', function() {
+add_filter( 'pwtsr_cf7_tracking_label', function() {
     return 'Attribution';
 } );
 `
@@ -141,7 +145,8 @@ Install via the WordPress plugin installer or manually upload the folder to `wp-
 2. If using Gravity Forms, edit a form and add the **Tracking** field from *Advanced Fields*.
 3. If using Forminator, publish a custom form (tracking inputs are injected automatically).
 4. If using Contact Form 7, publish any form (tracking inputs are injected automatically).
-5. Send traffic with UTM/click parameters.
+5. If using Formidable, publish a form (tracking inputs are injected automatically).
+6. Send traffic with UTM/click parameters.
 
 == Frequently Asked Questions ==
 
@@ -151,15 +156,19 @@ UTM parameters (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_
 
 = Does this require custom JavaScript in my theme? =
 
-No. The plugin injects and populates the field automatically when a form contains the Tracking field.
+No. The plugin injects and populates tracking inputs automatically when supported forms render.
 
 = How long is attribution data stored? =
 
-By default, one hour. You can change the TTL with the `presswell_tracking_signal_relay_tracking_ttl` filter.
+By default, one hour. You can change the TTL with the `pwtsr_tracking_ttl` filter.
 
 = Can I track additional custom parameters? =
 
-Yes. Use the `presswell_tracking_signal_relay_tracking_keys` filter to add or remove keys.
+Yes. Use the `pwtsr_tracking_keys` filter to add or remove keys.
+
+= Why isn't my form plugin supported? =
+
+We plan to support additional form ecosystems, but each integration requires reliable extension points for hidden field rendering, submission lifecycle hooks, entry persistence, and token/merge-tag resolution. Some form plugins do not expose these capabilities consistently enough to deliver a production-ready adapter.
 
 == Screenshots ==
 
