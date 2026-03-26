@@ -18,9 +18,11 @@ trait PWTSR_Forminator_Trait {
     }
 
     add_action( 'forminator_custom_forms_enqueue_scripts', [ $this, 'maybe_enqueue_forminator_assets' ] );
+    add_filter( 'forminator_data', [ $this, 'register_forminator_tracking_editor_variables' ], 20 );
     add_filter( 'forminator_render_form_markup', [ $this, 'inject_hidden_tracking_inputs' ], 20, 6 );
     add_filter( 'forminator_custom_form_submit_field_data', [ $this, 'append_tracking_to_entry' ], 20, 2 );
     add_filter( 'forminator_custom_form_entries_iterator', [ $this, 'append_tracking_to_entries_iterator' ], 20, 2 );
+    add_filter( 'forminator_replace_custom_form_data', [ $this, 'replace_forminator_tracking_placeholders' ], 20, 6 );
   }
 
   /**
@@ -31,6 +33,29 @@ trait PWTSR_Forminator_Trait {
   }
 
   /**
+   * Add tracking placeholders to Forminator's editor variable map.
+   *
+   * @param array $data Forminator localized admin data.
+   *
+   * @return array
+   */
+  public function register_forminator_tracking_editor_variables( $data ) {
+    if ( ! is_array( $data ) ) {
+      return $data;
+    }
+
+    if ( ! isset( $data['variables'] ) || ! is_array( $data['variables'] ) ) {
+      $data['variables'] = [];
+    }
+
+    if ( ! isset( $data['variables']['tracking_all'] ) ) {
+      $data['variables']['tracking_all'] = __( 'Tracking: All Signals', 'presswell-signal-relay' );
+    }
+
+    return $data;
+  }
+
+  /**
    * Inject hidden tracking inputs into rendered Forminator markup.
    *
    * @param string $html Rendered form markup.
@@ -38,6 +63,10 @@ trait PWTSR_Forminator_Trait {
    * @return string
    */
   public function inject_hidden_tracking_inputs( $html, $form_fields = [], $form_type = '', $form_settings = [], $form_design = [], $render_id = '' ) {
+    if ( $this->is_forminator_admin_editor_context() ) {
+      return $html;
+    }
+
     if ( false === stripos( $html, '</form>' ) ) {
       return $html;
     }
@@ -230,5 +259,114 @@ trait PWTSR_Forminator_Trait {
     }
 
     return $pairs;
+  }
+
+  /**
+   * Replace tracking placeholders for Forminator email/confirmation/integration pipelines.
+   *
+   * Supported placeholders:
+   * - {tracking_all}
+   * - {tracking_values}
+   * - {tracking_<key>} e.g. {tracking_utm_source}
+   *
+   * @param string $content       Content with placeholders.
+   * @param mixed  $custom_form   Forminator form model.
+   * @param array  $prepared_data Submitted prepared data.
+   * @param mixed  $entry         Forminator entry model.
+   * @param array  $excluded      Excluded placeholders.
+   * @param array  $custom_tags   Default Forminator custom tags map.
+   *
+   * @return string
+   */
+  public function replace_forminator_tracking_placeholders( $content, $custom_form, $prepared_data, $entry, $excluded, $custom_tags ) {
+    if ( ! is_string( $content ) || false === strpos( $content, '{tracking' ) ) {
+      return $content;
+    }
+
+    $pairs = $this->get_forminator_tracking_pairs_for_placeholders( $prepared_data, $entry );
+
+    $all_lines = [];
+    foreach ( $pairs as $key => $value ) {
+      $all_lines[] = $key . ': ' . $value;
+    }
+    $all_value = implode( "\n", $all_lines );
+
+    $content = $this->replace_forminator_placeholder( $content, '{tracking_all}', $all_value );
+    $content = $this->replace_forminator_placeholder( $content, '{tracking_values}', $all_value );
+
+    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+      $placeholder = '{tracking_' . $key . '}';
+      $value       = isset( $pairs[ $key ] ) ? $pairs[ $key ] : '';
+      $content     = $this->replace_forminator_placeholder( $content, $placeholder, $value );
+    }
+
+    return $content;
+  }
+
+  /**
+   * Resolve tracking pairs from prepared data and entry models.
+   *
+   * @param array $prepared_data Submitted prepared data.
+   * @param mixed $entry         Forminator entry model.
+   *
+   * @return array
+   */
+  private function get_forminator_tracking_pairs_for_placeholders( $prepared_data, $entry ) {
+    $pairs = [];
+
+    if ( ! is_array( $prepared_data ) ) {
+      $prepared_data = [];
+    }
+
+    $entry_pairs = $this->get_entry_tracking_values( $entry );
+
+    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+      $value = '';
+
+      if ( isset( $prepared_data[ $key ] ) && ! is_array( $prepared_data[ $key ] ) ) {
+        $value = $prepared_data[ $key ];
+      } elseif ( isset( $entry_pairs[ $key ] ) ) {
+        $value = $entry_pairs[ $key ];
+      }
+
+      $clean = $this->service->sanitize_tracking_value( $key, $value );
+      if ( '' === $clean ) {
+        continue;
+      }
+
+      $pairs[ $key ] = $clean;
+    }
+
+    return $pairs;
+  }
+
+  /**
+   * Replace a placeholder in content including URL-embedded placeholders.
+   *
+   * @param string $content     Content string.
+   * @param string $placeholder Placeholder token.
+   * @param string $value       Replacement value.
+   *
+   * @return string
+   */
+  private function replace_forminator_placeholder( $content, $placeholder, $value ) {
+    if ( false === strpos( $content, $placeholder ) ) {
+      return $content;
+    }
+
+    if ( function_exists( 'forminator_replace_placeholder_in_urls' ) ) {
+      $content = forminator_replace_placeholder_in_urls( $content, $placeholder, (string) $value );
+    }
+
+    return str_replace( $placeholder, (string) $value, $content );
+  }
+
+  /**
+   * Detect whether current request is running inside Forminator admin/editor context.
+   *
+   * @return bool
+   */
+  private function is_forminator_admin_editor_context() {
+    return is_admin();
   }
 }
