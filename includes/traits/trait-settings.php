@@ -88,7 +88,7 @@ trait PWTSR_Settings_Trait {
    */
   public function get_settings() {
     $settings = wp_parse_args( get_option( PWTSR::SETTINGS_KEY, [] ), $this->get_default_settings() );
-    $settings['debug_mode'] = ! empty( $settings['debug_mode'] ) ? 'on' : 'off';
+    $settings['debug_mode'] = ( isset( $settings['debug_mode'] ) && 'on' === $settings['debug_mode'] ) ? 'on' : 'off';
 
     return $settings;
   }

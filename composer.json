@@ -1,0 +1,14 @@
+{
+  "name": "presswell/presswell-signal-relay",
+  "type": "wordpress-plugin",
+  "scripts": {
+    "phpunit": "vendor/bin/phpunit",
+    "phpunit:file": "vendor/bin/phpunit",
+    "phpunit:filter": "vendor/bin/phpunit"
+  },
+  "require": {},
+  "require-dev": {
+    "phpunit/phpunit": "^9.6",
+    "yoast/phpunit-polyfills": "^3.1"
+  }
+}
