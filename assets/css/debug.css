@@ -135,3 +135,7 @@
   outline: 1px solid #475569;
   box-shadow: none;
 }
+
+.presswell-fluent-transceiver {
+  margin-bottom: 20px !important;
+}

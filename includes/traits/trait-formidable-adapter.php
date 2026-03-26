@@ -27,7 +27,7 @@ trait PWTSR_Formidable_Trait {
     add_action( 'frm_enqueue_form_scripts', [ $this, 'maybe_enqueue_formidable_assets' ], 20, 1 );
     add_action( 'frm_entry_form', [ $this, 'render_formidable_tracking_inputs' ], 20, 3 );
     add_filter( 'frm_pre_create_entry', [ $this, 'sanitize_formidable_submission_values' ], 20, 1 );
-    add_action( 'frm_after_create_entry', [ $this, 'persist_formidable_tracking_values' ], 20, 3 );
+    add_action( 'frm_after_create_entry', [ $this, 'persist_formidable_tracking_values' ], 5, 3 );
     add_action( 'frm_show_entry', [ $this, 'render_formidable_tracking_block' ], 20, 1 );
     add_filter( 'frm_helper_shortcodes', [ $this, 'register_formidable_tracking_helper_shortcodes' ], 20, 2 );
     add_filter( 'frm_content', [ $this, 'replace_formidable_tracking_tokens' ], 30, 3 );
@@ -269,6 +269,9 @@ trait PWTSR_Formidable_Trait {
     }
 
     $pairs = $this->get_formidable_tracking_pairs( (int) $entry_object->id );
+    if ( empty( $pairs ) ) {
+      $pairs = $this->pending_formidable_tracking;
+    }
 
     $all_lines = [];
     foreach ( $pairs as $key => $value ) {

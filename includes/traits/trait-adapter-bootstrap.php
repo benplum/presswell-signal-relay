@@ -99,15 +99,33 @@ trait PWTSR_Adapter_Bootstrap_Trait {
           'includes/adapters/class-contact-form-7-adapter.php',
         ],
       ],
-      [
-        'detector' => [ $this, 'is_fluent_forms_available' ],
-        'class'    => 'PWTSR_Fluent_Forms_Adapter',
-        'files'    => [
-          'includes/traits/trait-adapter-assets.php',
-          'includes/traits/trait-fluent-forms-adapter.php',
-          'includes/adapters/class-fluent-forms-adapter.php',
-        ],
-      ],
+      // [
+      //   'detector' => [ $this, 'is_wpforms_available' ],
+      //   'class'    => 'PWTSR_WPForms_Adapter',
+      //   'files'    => [
+      //     'includes/traits/trait-adapter-assets.php',
+      //     'includes/traits/trait-wpforms-adapter.php',
+      //     'includes/adapters/class-wpforms-adapter.php',
+      //   ],
+      // ],
+      // [
+      //   'detector' => [ $this, 'is_ninja_forms_available' ],
+      //   'class'    => 'PWTSR_Ninja_Forms_Adapter',
+      //   'files'    => [
+      //     'includes/traits/trait-adapter-assets.php',
+      //     'includes/traits/trait-ninja-forms-adapter.php',
+      //     'includes/adapters/class-ninja-forms-adapter.php',
+      //   ],
+      // ],
+      // [
+      //   'detector' => [ $this, 'is_fluent_forms_available' ],
+      //   'class'    => 'PWTSR_Fluent_Forms_Adapter',
+      //   'files'    => [
+      //     'includes/traits/trait-adapter-assets.php',
+      //     'includes/traits/trait-fluent-forms-adapter.php',
+      //     'includes/adapters/class-fluent-forms-adapter.php',
+      //   ],
+      // ],
       [
         'detector' => [ $this, 'is_formidable_available' ],
         'class'    => 'PWTSR_Formidable_Adapter',
@@ -148,13 +166,31 @@ trait PWTSR_Adapter_Bootstrap_Trait {
   }
 
   /**
-   * Determine whether Fluent Forms is loaded.
+   * Determine whether WPForms is loaded.
    *
    * @return bool
    */
-  private function is_fluent_forms_available() {
-    return defined( 'FLUENTFORM_VERSION' ) || defined( 'FLUENTFORM' );
+  private function is_wpforms_available() {
+    return defined( 'WPFORMS_VERSION' ) || function_exists( 'wpforms' ) || class_exists( '\\WPForms\\WPForms' );
   }
+
+  // /**
+  //  * Determine whether Ninja Forms is loaded.
+  //  *
+  //  * @return bool
+  //  */
+  // private function is_ninja_forms_available() {
+  //   return defined( 'NINJA_FORMS_VERSION' ) || class_exists( 'Ninja_Forms' ) || function_exists( 'Ninja_Forms' );
+  // }
+
+  // /**
+  //  * Determine whether Fluent Forms is loaded.
+  //  *
+  //  * @return bool
+  //  */
+  // private function is_fluent_forms_available() {
+  //   return defined( 'FLUENTFORM_VERSION' ) || defined( 'FLUENTFORM' );
+  // }
 
   /**
    * Determine whether Formidable Forms is loaded.

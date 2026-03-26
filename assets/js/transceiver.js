@@ -189,6 +189,58 @@
     });
   }
 
+  // function populateNinjaTrackingFields(values) {
+  //   if (!values || !window.nfForms || !Array.isArray(window.nfForms)) {
+  //     return;
+  //   }
+
+  //   window.nfForms.forEach(function (form) {
+  //     if (!form || !Array.isArray(form.fields)) {
+  //       return;
+  //     }
+
+  //     form.fields.forEach(function (field) {
+  //       var settings = field && field.settings ? field.settings : field;
+  //       if (!settings || settings.type !== 'presswell_tracking') {
+  //         return;
+  //       }
+
+  //       var trackingKey = (settings.pwtsr_tracking_key || settings.key || '').toString();
+  //       if (!trackingKey) {
+  //         return;
+  //       }
+
+  //       var inputId = 'nf-field-' + settings.id;
+  //       var input = document.getElementById(inputId);
+  //       if (!input) {
+  //         return;
+  //       }
+
+  //       input.value = values[trackingKey] || '';
+  //     });
+  //   });
+  // }
+
+  // function populateWPFormsTrackingFields(values) {
+  //   if (!values) {
+  //     return;
+  //   }
+
+  //   var wpformsInputs = document.querySelectorAll('.wpforms-form input[data-presswell-transceiver]');
+  //   if (!wpformsInputs.length) {
+  //     return;
+  //   }
+
+  //   wpformsInputs.forEach(function (input) {
+  //     var key = input.getAttribute('data-presswell-transceiver');
+  //     if (!key) {
+  //       return;
+  //     }
+
+  //     input.value = values[key] || '';
+  //   });
+  // }
+
   function syncSignals() {
     var stored = readStorage() || {};
     var fresh = getQueryValues();
@@ -202,6 +254,8 @@
 
     injectForminatorFallbackInputs();
     populateInputs(merged);
+    // populateNinjaTrackingFields(merged);
+    // populateWPFormsTrackingFields(merged);
   }
 
   function init() {

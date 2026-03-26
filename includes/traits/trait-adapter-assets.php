@@ -41,22 +41,33 @@ trait PWTSR_Adapter_Assets_Trait {
    * @param string $context Integration context.
    */
   protected function enqueue_tracking_script( $context = 'core' ) {
+    static $config_injected = false;
+
     $this->register_tracking_assets();
 
     wp_enqueue_script( PWTSR::ASSET_HANDLE_SCRIPT );
     $this->maybe_enqueue_debug_assets();
 
-    if ( isset( $this->localized_objects[ PWTSR::JS_OBJECT ] ) ) {
+    if ( $config_injected ) {
       return;
     }
 
-    wp_localize_script(
+    $config      = $this->service->get_client_config( $context );
+    $object_name = PWTSR::JS_OBJECT;
+    $payload     = wp_json_encode( $config );
+
+    if ( ! is_string( $payload ) || '' === $payload ) {
+      return;
+    }
+
+    wp_add_inline_script(
       PWTSR::ASSET_HANDLE_SCRIPT,
-      PWTSR::JS_OBJECT,
-      $this->service->get_client_config( $context )
+      "window.{$object_name}={$payload};",
+      'before'
     );
 
     $this->localized_objects[ PWTSR::JS_OBJECT ] = true;
+    $config_injected = true;
   }
 
   /**
