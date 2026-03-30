@@ -29,7 +29,8 @@ trait PWTSR_Adapter_Bootstrap_Trait {
     $this->adapter_registry = new PWTSR_Adapter_Registry();
     $this->service = new PWTSR_Tracking_Service();
     
-    add_action( 'plugins_loaded', [ $this, 'bootstrap_integrations' ], 20 );
+    // Delay integration registration until init so translated labels are not resolved too early.
+    add_action( 'init', [ $this, 'bootstrap_integrations' ], 20 );
     add_action( 'admin_enqueue_scripts', [ $this, 'maybe_enqueue_builder_icon_styles' ], 20 );
   }
 
