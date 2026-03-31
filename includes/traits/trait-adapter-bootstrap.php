@@ -53,7 +53,6 @@ trait PWTSR_Adapter_Bootstrap_Trait {
     $page_raw = filter_input( INPUT_GET, 'page', FILTER_UNSAFE_RAW );
     $page = is_string( $page_raw ) ? sanitize_key( wp_unslash( $page_raw ) ) : '';
 
-    $is_wpforms_screen = false !== strpos( $screen_id, 'wpforms' ) || false !== strpos( $page, 'wpforms' );
     $is_fluent_screen  = false !== strpos( $screen_id, 'fluentform' )
       || false !== strpos( $page, 'fluentform' )
       || false !== strpos( $screen_id, 'fluent_forms' )
@@ -61,8 +60,9 @@ trait PWTSR_Adapter_Bootstrap_Trait {
     $is_formidable_screen = false !== strpos( $screen_id, 'formidable' )
       || false !== strpos( $page, 'formidable' )
       || 0 === strpos( $page, 'frm-' );
+    $is_wpforms_screen = false !== strpos( $screen_id, 'wpforms' ) || false !== strpos( $page, 'wpforms' );
 
-    if ( ! $is_wpforms_screen && ! $is_fluent_screen && ! $is_formidable_screen ) {
+    if ( ! $is_fluent_screen && ! $is_formidable_screen && ! $is_wpforms_screen ) {
       return;
     }
 

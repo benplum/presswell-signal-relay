@@ -15,12 +15,12 @@ Presswell Tracking Signal Relay captures attribution parameters and stores them 
 
 **Supported Form Plugins**
 
+* Contact Form 7
+* Fluent Forms
+* Formidable Forms
+* Forminator
 * Gravity Forms
 * WPForms
-* Fluent Forms
-* Contact Form 7
-* Forminator
-* Formidable Forms
 
 **Features**
 
@@ -34,50 +34,54 @@ Presswell Tracking Signal Relay captures attribution parameters and stores them 
 
 ***Capture Methods***
 
-* Gravity Forms: Custom field type (`presswell_transceiver`) that users add from the builder.
-* WPForms: Custom field type (`presswell_transceiver`) that users add from the builder.
-* Fluent Forms: Custom field type (`presswell_transceiver`) that users add from the builder.
-* Contact Form 7: HTML injection. Hidden tracking inputs are appended during form render.
-* Forminator: HTML injection. Hidden tracking inputs are appended during form render.
-* Formidable Forms: Custom field type (`presswell_transceiver`) that users add from the builder.
+* Contact Form 7: Hidden tracking inputs are appended during form render.
+* Fluent Forms: Custom field type that users add from the builder.
+* Formidable Forms: Custom field type that users add from the builder.
+* Forminator: Hidden tracking inputs are appended during form render.
+* Gravity Forms: Custom field type that users add from the builder.
+* WPForms: Custom field type that users add from the builder.
 
 **pwtsr_tracking_keys( $keys, $context )**
 
 * **$keys** (array) (required) - Ordered list of tracking keys that should be captured and stored with each entry.
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `wpforms`, `fluentforms`, `contactform7`, `forminator`, or `formidable`).
+* **$context** (string) (required) - Adapter context (`core`, `contactform7`, `fluentforms`, `formidable`, `forminator`, `gravityforms`, or `wpforms`).
 * Return an indexed array of string keys.
 * These values are used to build hidden inputs and entry-detail output.
 
 Example:
 
-    add_filter( 'pwtsr_tracking_keys', function( $keys, $context ) {
-        if ( 'gravityforms' !== $context ) {
-            return $keys;
-        }
-        $keys[] = 'custom_param';
-        $keys[] = 'utm_id';
-        return $keys;
-    }, 10, 2 );
+```
+add_filter( 'pwtsr_tracking_keys', function( $keys, $context ) {
+  if ( 'gravityforms' !== $context ) {
+    return $keys;
+  }
+  $keys[] = 'custom_param';
+  $keys[] = 'utm_id';
+  return $keys;
+}, 10, 2 );
+```
 
 **pwtsr_tracking_ttl( $ttl, $context )**
 
 * **$ttl** (int) (required) - Session storage lifetime in seconds. Default is `3600` (1 hour).
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `wpforms`, `fluentforms`, `contactform7`, `forminator`, or `formidable`).
+* **$context** (string) (required) - Adapter context (`core`, `contactform7`, `fluentforms`, `formidable`, `forminator`, `gravityforms`, or `wpforms`).
 * Return a positive integer. Invalid values automatically fall back to the default TTL.
 
 Example:
 
-    add_filter( 'pwtsr_tracking_ttl', function( $ttl, $context ) {
-        if ( 'core' !== $context ) {
-            return $ttl;
-        }
-        return DAY_IN_SECONDS * 7;
-    }, 10, 2 );
+```
+add_filter( 'pwtsr_tracking_ttl', function( $ttl, $context ) {
+  if ( 'core' !== $context ) {
+    return $ttl;
+  }
+  return DAY_IN_SECONDS * 7;
+}, 10, 2 );
+```
 
 **pwtsr_storage_key( $storage_key, $context )**
 
 * **$storage_key** (string) (required) - Browser storage key used for the attribution payload.
-* **$context** (string) (required) - Adapter context (`core`, `gravityforms`, `wpforms`, `fluentforms`, `contactform7`, `forminator`, or `formidable`).
+* **$context** (string) (required) - Adapter context (`core`, `contactform7`, `fluentforms`, `formidable`, `forminator`, `gravityforms`, or `wpforms`).
 * Return a non-empty string.
 
 **Default Tracking Keys**
@@ -108,12 +112,12 @@ Use *Settings -> Tracking Signal Relay* to:
 Install via the WordPress plugin installer or manually upload the folder to `wp-content/plugins/`.
 
 1. Activate the plugin.
-2. If using Gravity Forms, edit a form and add the **Tracking** field from *Advanced Fields*.
-3. If using WPForms, edit a form and add the **Tracking** field.
-4. If using Fluent Forms, edit a form and add the **Tracking** field.
-5. If using Formidable Forms, edit a form and add the **Tracking** field.
-6. If using Contact Form 7, publish any form (tracking inputs are injected automatically).
-7. If using Forminator, publish a custom form (tracking inputs are injected automatically).
+2. If using Contact Form 7, publish any form (tracking inputs are injected automatically).
+3. If using Fluent Forms, edit a form and add the **Tracking** field.
+4. If using Formidable Forms, edit a form and add the **Tracking** field.
+5. If using Forminator, publish a custom form (tracking inputs are injected automatically).
+6. If using Gravity Forms, edit a form and add the **Tracking** field from *Advanced Fields*.
+7. If using WPForms, edit a form and add the **Tracking** field.
 8. Send traffic with UTM/click parameters.
 
 == Frequently Asked Questions ==
