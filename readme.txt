@@ -4,8 +4,8 @@ Tags: attribution, utm, tracking, forms, lead-generation
 Requires at least: 6.1
 Tested up to: 6.9
 Stable tag: 1.0.0
-License: GNU General Public License v2.0 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+License: GPLv2 or later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 Capture attribution query parameters and relay them into supported WordPress form submissions.
 
@@ -109,7 +109,9 @@ Use *Settings -> Tracking Signal Relay* to:
 
 == Installation ==
 
-Install via the WordPress plugin installer or manually upload the folder to `wp-content/plugins/`.
+Install via the WordPress plugin installer, or manually upload the plugin directory to `wp-content/plugins/`.
+
+**Configuration**
 
 1. Activate the plugin.
 2. If using Contact Form 7, publish any form (tracking inputs are injected automatically).

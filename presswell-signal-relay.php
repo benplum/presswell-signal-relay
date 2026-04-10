@@ -4,27 +4,14 @@
  * Description: Capture UTM and click attribution parameters across a visitor session for supported form plugins.
  * Author: Presswell
  * Version: 1.0.0
- * Plugin URI: http://wordpress.org/plugins/
- * Author URI: http://presswell.co
+ * Plugin URI: https://wordpress.org/plugins/presswell-signal-relay
+ * Author URI: https://presswell.co
  * License: GPLv2 or later
- * License URI: http://www.gnu.org/licenses/gpl-2.0.html
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: presswell-signal-relay
  *
  * @package Presswell Tracking Signal Relay
  * @author Presswell
- *
- * Presswell Tracking Signal Relay is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
- * any later version.
- *
- * Presswell Tracking Signal Relay is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Presswell Tracking Signal Relay. If not, see <http://www.gnu.org/licenses/>.
  */
 
 /*
@@ -64,7 +51,7 @@ if ( ! class_exists( 'Presswell_Tracking_Signal_Relay' ) ) {
     /**
      * Cached singleton instance.
      *
-      * @var Presswell_Tracking_Signal_Relay|null
+     * @var Presswell_Tracking_Signal_Relay|null
      */
     private static $instance = null;
 
@@ -88,7 +75,7 @@ if ( ! class_exists( 'Presswell_Tracking_Signal_Relay' ) ) {
     /**
      * Return shared plugin instance.
      *
-      * @return Presswell_Tracking_Signal_Relay
+     * @return Presswell_Tracking_Signal_Relay
      */
     public static function instance() {
       if ( null === self::$instance ) {
