@@ -99,7 +99,7 @@ trait PWTSR_Contact_Form_7_Trait {
   }
 
   /**
-  * Add Tracking Signal Relay special mail tags to Contact Form 7 Mail panel suggestions.
+   * Add Tracking Signal Relay special mail tags to Contact Form 7 Mail panel suggestions.
    *
    * @param array $mailtags Existing suggested mail tags.
    *
@@ -111,7 +111,6 @@ trait PWTSR_Contact_Form_7_Trait {
     }
 
     $mailtags[] = 'tracking-all';
-    // $mailtags[] = 'tracking-values';
 
     foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_CONTACT_FORM_7 ) as $key ) {
       $mailtags[] = 'tracking-' . $key;

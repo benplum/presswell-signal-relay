@@ -6,7 +6,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Shared utility helpers for locating plugin assets and rendering templates.
- * Adapted from PWATG_Helpers_Trait for Tracking Signal Relay namespace.
  */
 trait Presswell_Tracking_Signal_Relay_Helpers_Trait {
   /**

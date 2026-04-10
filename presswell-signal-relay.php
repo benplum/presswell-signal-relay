@@ -14,12 +14,6 @@
  * @author Presswell
  */
 
-/*
- * Manual QA sample query string for transceiver testing.
- * Paste onto any frontend URL to verify capture and form field relay.
- */
-// ?utm_source=google&utm_medium=cpc&utm_campaign=winter_launch&utm_content=cta_banner&utm_term=snow_boots&gclid=Cj0KCQiAzbi-ABCD1234&fbclid=fb.9876543210XYZ&msclkid=MSCLKID123456&ttclid=TTCLID-987654&landing_page=https%3A%2F%2Fexample.com%2Fwinter-sale&landing_query=%3Fref%3Dpartner&referrer=https%3A%2F%2Fpartner-site.com&campaign_source=foobar
-
 if ( ! defined( 'ABSPATH' ) ) {
   exit;
 }
@@ -37,7 +31,7 @@ require_once __DIR__ . '/includes/traits/trait-pages.php';
 
 if ( ! class_exists( 'Presswell_Tracking_Signal_Relay' ) ) {
   /**
-   * Composition root for all plugin features.
+  * Bootstrap container for all Presswell Tracking Signal Relay features.
    */
   final class Presswell_Tracking_Signal_Relay {
     use PWTSR_Adapter_Bootstrap_Trait;
@@ -45,7 +39,7 @@ if ( ! class_exists( 'Presswell_Tracking_Signal_Relay' ) ) {
     use Presswell_Tracking_Signal_Relay_Helpers_Trait;
     use PWTSR_Settings_Trait;
     use PWTSR_Pages_Trait;
-    
+
     const PLUGIN_FILE = __FILE__;
 
     /**

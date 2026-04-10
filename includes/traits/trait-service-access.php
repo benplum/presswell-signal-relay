@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Trait for exposing service and adapters accessors.
  */
 trait PWTSR_Service_Access_Trait {
-    
+
   /**
   * Shared tracking service instance.
   *

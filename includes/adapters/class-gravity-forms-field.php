@@ -9,6 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' ) ) {
 
+  /**
+   * Gravity Forms field implementation for Tracking Signal Relay.
+   */
   class PWTSR_Gravity_Forms_Field extends GF_Field {
 
     /**

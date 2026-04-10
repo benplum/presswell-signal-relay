@@ -259,10 +259,6 @@ trait PWTSR_Formidable_Trait {
       $entry_shortcodes['tracking_all'] = __( 'Tracking: All Signals', 'presswell-signal-relay' );
     }
 
-    // if ( ! isset( $entry_shortcodes['tracking_values'] ) ) {
-    //   $entry_shortcodes['tracking_values'] = __( 'Tracking: All Signals (Alias)', 'presswell-signal-relay' );
-    // }
-
     foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMIDABLE ) as $key ) {
       $shortcode = 'tracking_' . $key;
       if ( isset( $entry_shortcodes[ $shortcode ] ) ) {
