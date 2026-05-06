@@ -159,8 +159,11 @@ trait PWTSR_Formidable_Trait {
     $posted_tracking = [];
     if ( isset( $values['pwtsr_tracking'] ) && is_array( $values['pwtsr_tracking'] ) ) {
       $posted_tracking = $values['pwtsr_tracking'];
-    } elseif ( $this->is_valid_formidable_submission_nonce( $values, $form_id ) && isset( $_POST['pwtsr_tracking'] ) && is_array( $_POST['pwtsr_tracking'] ) ) {
-      $posted_tracking = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce validated above; values are sanitized below.
+    } elseif ( $this->is_valid_formidable_submission_nonce( $values, $form_id ) ) {
+      // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is validated in the conditional branch guard above.
+      if ( isset( $_POST['pwtsr_tracking'] ) && is_array( $_POST['pwtsr_tracking'] ) ) {
+        $posted_tracking = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce validated above; values are sanitized below.
+      }
     }
 
     foreach ( $field_ids as $field_id ) {

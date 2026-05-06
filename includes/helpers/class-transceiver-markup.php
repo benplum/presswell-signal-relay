@@ -10,6 +10,50 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PWTSR_Transceiver_Markup {
 
   /**
+   * Sanitize rendered transceiver wrapper markup with a strict allowlist.
+   *
+   * @param string $markup Wrapper markup.
+   *
+   * @return string
+   */
+  public static function sanitize_wrapper_markup( $markup ) {
+    return wp_kses(
+      (string) $markup,
+      [
+        'div' => [
+          'class' => true,
+          'data-presswell-transceiver' => true,
+          'data-presswell-transceiver-adapter' => true,
+          'aria-hidden' => true,
+          'style' => true,
+          'hidden' => true,
+        ],
+        'button' => [
+          'type' => true,
+          'class' => true,
+          'aria-expanded' => true,
+        ],
+        'span' => [
+          'class' => true,
+          'aria-hidden' => true,
+        ],
+        'label' => [
+          'class' => true,
+          'for' => true,
+        ],
+        'input' => [
+          'type' => true,
+          'id' => true,
+          'name' => true,
+          'value' => true,
+          'readonly' => true,
+          'data-presswell-transceiver' => true,
+        ],
+      ]
+    );
+  }
+
+  /**
    * Determine whether debug panel should start closed based on cookie state.
    *
    * @return bool

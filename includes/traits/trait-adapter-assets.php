@@ -53,16 +53,16 @@ trait PWTSR_Adapter_Assets_Trait {
     }
 
     $config      = $this->service->get_client_config( $context );
-    $object_name = PWTSR::JS_OBJECT;
+    $object_name = preg_replace( '/[^A-Za-z0-9_$]/', '', (string) PWTSR::JS_OBJECT );
     $payload     = wp_json_encode( $config );
 
-    if ( ! is_string( $payload ) || '' === $payload ) {
+    if ( ! is_string( $payload ) || '' === $payload || '' === $object_name ) {
       return;
     }
 
     wp_add_inline_script(
       PWTSR::ASSET_HANDLE_SCRIPT,
-      "window.{$object_name}={$payload};",
+      sprintf( 'window.%s=%s;', $object_name, $payload ),
       'before'
     );
 

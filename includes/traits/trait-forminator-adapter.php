@@ -194,6 +194,7 @@ trait PWTSR_Forminator_Trait {
    * @return array
    */
   private function get_posted_tracking_values() {
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Presence check only; nonce is verified immediately below.
     if ( empty( $_POST ) || ! is_array( $_POST ) ) {
       return [];
     }
@@ -205,6 +206,7 @@ trait PWTSR_Forminator_Trait {
     $values = [];
     $nested = [];
 
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is verified above before request data is consumed.
     if ( isset( $_POST['data'] ) ) {
       $nested_raw = wp_unslash( $_POST['data'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above.
       if ( is_array( $nested_raw ) ) {
@@ -215,6 +217,7 @@ trait PWTSR_Forminator_Trait {
     foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
       $raw = null;
 
+      // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is verified above before request data is consumed.
       if ( isset( $_POST[ $key ] ) ) {
         $raw = wp_unslash( $_POST[ $key ] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above.
       } elseif ( isset( $nested[ $key ] ) ) {

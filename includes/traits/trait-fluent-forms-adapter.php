@@ -568,6 +568,7 @@ trait PWTSR_Fluent_Forms_Trait {
    * @return array
    */
   private function get_fluent_forms_posted_tracking_values() {
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Presence check only; nonce is verified immediately below.
     if ( empty( $_POST ) || ! is_array( $_POST ) ) {
       return [];
     }
@@ -578,6 +579,7 @@ trait PWTSR_Fluent_Forms_Trait {
 
     $values = [];
     $tracking_payload = [];
+    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is verified above before request data is consumed.
     if ( isset( $_POST['pwtsr_tracking'] ) ) {
       $tracking_raw = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above.
       if ( is_array( $tracking_raw ) ) {
@@ -600,6 +602,7 @@ trait PWTSR_Fluent_Forms_Trait {
     }
 
     foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FLUENT_FORMS ) as $key ) {
+      // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is verified above before request data is consumed.
       if ( ! isset( $_POST[ $key ] ) || is_array( $_POST[ $key ] ) ) {
         continue;
       }

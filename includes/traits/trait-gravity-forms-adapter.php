@@ -88,12 +88,7 @@ trait PWTSR_Gravity_Forms_Trait {
     wp_register_style( PWTSR::ASSET_HANDLE_STYLE, false, [], PWTSR::VERSION );
     wp_enqueue_style( PWTSR::ASSET_HANDLE_STYLE );
 
-    $selectors = [
-      '.gfield--type-' . PWTSR::FIELD_TYPE,
-      '.gfield--type-' . str_replace( '_', '-', PWTSR::FIELD_TYPE ),
-    ];
-
-    $css = implode( ',', $selectors ) . '{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important;}';
+    $css = '.gfield--type-presswell_transceiver,.gfield--type-presswell-transceiver{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important;}';
     wp_add_inline_style( PWTSR::ASSET_HANDLE_STYLE, $css );
 
     $this->styles_enqueued = true;
