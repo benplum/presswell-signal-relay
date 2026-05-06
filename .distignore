@@ -29,3 +29,7 @@ node_modules
 *.tar.gz
 *.zip
 wp_sync.sh
+
+#temp
+includes/adapters/class-ninja-forms-adapter.php.bac
+includes/traits/trait-ninja-forms-adapter.php.bac

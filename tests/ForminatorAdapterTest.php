@@ -76,14 +76,18 @@ class ForminatorAdapterTest extends WP_UnitTestCase {
   }
 
   public function test_append_tracking_to_entry_reads_posted_values() {
+    $form_id = 12;
+
     $_POST = [
+      'form_id' => $form_id,
+      'forminator_nonce' => wp_create_nonce( 'forminator_submit_form' . $form_id ),
       'utm_source' => ' Google ',
       'data' => [
         'utm_campaign' => ' spring_launch ',
       ],
     ];
 
-    $result = $this->adapter->append_tracking_to_entry( [ [ 'name' => 'email', 'value' => 'a@example.com' ] ], 12 );
+    $result = $this->adapter->append_tracking_to_entry( [ [ 'name' => 'email', 'value' => 'a@example.com' ] ], $form_id );
 
     $source_found = false;
     $campaign_found = false;

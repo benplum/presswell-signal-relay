@@ -194,17 +194,19 @@ trait PWTSR_Forminator_Trait {
    * @return array
    */
   private function get_posted_tracking_values() {
-    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Forminator validates nonce before this callback runs.
-    $request_post = isset( $_POST ) && is_array( $_POST ) ? wp_unslash( $_POST ) : [];
-    if ( empty( $request_post ) ) {
+    if ( empty( $_POST ) || ! is_array( $_POST ) ) {
+      return [];
+    }
+
+    if ( ! $this->is_valid_forminator_submission_nonce() ) {
       return [];
     }
 
     $values = [];
     $nested = [];
 
-    if ( isset( $request_post['data'] ) ) {
-      $nested_raw = $request_post['data'];
+    if ( isset( $_POST['data'] ) ) {
+      $nested_raw = wp_unslash( $_POST['data'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above.
       if ( is_array( $nested_raw ) ) {
         $nested = $nested_raw;
       }
@@ -213,20 +215,51 @@ trait PWTSR_Forminator_Trait {
     foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
       $raw = null;
 
-      if ( isset( $request_post[ $key ] ) ) {
-        $raw = $request_post[ $key ];
+      if ( isset( $_POST[ $key ] ) ) {
+        $raw = wp_unslash( $_POST[ $key ] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above.
       } elseif ( isset( $nested[ $key ] ) ) {
         $raw = $nested[ $key ];
       }
 
-      if ( null === $raw || is_array( $raw ) ) {
+      if ( null === $raw || is_array( $raw ) || ! is_scalar( $raw ) ) {
         continue;
       }
 
-      $values[ $key ] = $raw;
+      $values[ $key ] = $this->service->sanitize_tracking_value( $key, (string) $raw );
     }
 
     return $values;
+  }
+
+  /**
+   * Verify Forminator front-end submission nonce.
+   *
+   * @return bool
+   */
+  private function is_valid_forminator_submission_nonce() {
+    if ( empty( $_POST ) || ! is_array( $_POST ) ) {
+      return false;
+    }
+
+    if ( ! isset( $_POST['form_id'] ) || is_array( $_POST['form_id'] ) ) {
+      return false;
+    }
+
+    $form_id = absint( wp_unslash( $_POST['form_id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce action validation.
+    if ( ! $form_id ) {
+      return false;
+    }
+
+    if ( ! isset( $_POST['forminator_nonce'] ) || is_array( $_POST['forminator_nonce'] ) ) {
+      return false;
+    }
+
+    $nonce = sanitize_text_field( wp_unslash( $_POST['forminator_nonce'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce verification.
+    if ( '' === $nonce ) {
+      return false;
+    }
+
+    return (bool) wp_verify_nonce( $nonce, 'forminator_submit_form' . $form_id );
   }
 
   /**

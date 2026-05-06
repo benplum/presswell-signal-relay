@@ -54,11 +54,13 @@ class GravityFormsAdapterTest extends WP_UnitTestCase {
 
   public function test_sanitize_submission_values_updates_expected_input_keys() {
     $form = [
+      'id' => 42,
       'fields' => [
         [ 'id' => 12, 'type' => PWTSR::FIELD_TYPE ],
       ],
     ];
 
+    $_POST['_gform_submit_nonce_42'] = wp_create_nonce( 'gform_submit_42' );
     $_POST['input_12_1'] = 'Google';
     $_POST['input_12_2'] = [ 'bad' ];
 

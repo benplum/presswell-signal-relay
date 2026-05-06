@@ -56,15 +56,35 @@ class ContactForm7AdapterTest extends WP_UnitTestCase {
     $this->adapter = new PWTSR_Test_CF7_Adapter_Harness( new PWTSR_Tracking_Service() );
     delete_option( PWTSR::SETTINGS_KEY );
 
-    WPCF7_Submission::$instance = null;
+    $this->set_submission_instance( null );
     $_POST = [];
   }
 
   protected function tearDown(): void {
-    WPCF7_Submission::$instance = null;
+    $this->set_submission_instance( null );
     $_POST = [];
 
     parent::tearDown();
+  }
+
+  /**
+   * Set Contact Form 7 submission singleton in a runtime-safe way.
+   *
+   * @param mixed $instance Submission instance.
+   */
+  private function set_submission_instance( $instance ) {
+    if ( ! class_exists( 'WPCF7_Submission' ) ) {
+      return;
+    }
+
+    $reflection = new ReflectionClass( 'WPCF7_Submission' );
+    if ( ! $reflection->hasProperty( 'instance' ) ) {
+      return;
+    }
+
+    $property = $reflection->getProperty( 'instance' );
+    $property->setAccessible( true );
+    $property->setValue( null, $instance );
   }
 
   public function test_inject_tracking_inputs_appends_wrapper_once() {
@@ -78,16 +98,12 @@ class ContactForm7AdapterTest extends WP_UnitTestCase {
     $this->assertSame( $first, $second );
   }
 
-  public function test_sanitize_posted_data_uses_posted_data_and_fallback_post_values() {
-    $_POST = [
-      'utm_source' => 'Google ',
-      'referrer' => 'https://example.com/path?x=1',
-      'utm_term' => [ 'bad' ],
-    ];
-
+  public function test_sanitize_posted_data_uses_posted_data_values() {
     $result = $this->adapter->sanitize_contact_form_7_posted_data(
       [
         'utm_source' => '  Newsletter ',
+        'referrer' => 'https://example.com/path?x=1',
+        'utm_term' => [ 'bad' ],
       ]
     );
 
@@ -105,11 +121,13 @@ class ContactForm7AdapterTest extends WP_UnitTestCase {
   }
 
   public function test_render_special_mail_tags_returns_tracking_values() {
-    WPCF7_Submission::$instance = new WPCF7_Submission(
+    $this->set_submission_instance(
+      new WPCF7_Submission(
       [
         'utm_source' => 'google',
         'utm_campaign' => 'spring_launch',
       ]
+      )
     );
 
     $single = $this->adapter->render_contact_form_7_special_mail_tags( '', 'tracking-utm_source', false, null );

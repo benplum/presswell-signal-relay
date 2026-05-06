@@ -568,20 +568,30 @@ trait PWTSR_Fluent_Forms_Trait {
    * @return array
    */
   private function get_fluent_forms_posted_tracking_values() {
-    // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Fluent Forms validates nonce before this callback runs.
-    $request_post = isset( $_POST ) && is_array( $_POST ) ? wp_unslash( $_POST ) : [];
-    if ( empty( $request_post ) ) {
+    if ( empty( $_POST ) || ! is_array( $_POST ) ) {
+      return [];
+    }
+
+    if ( ! $this->is_valid_fluent_forms_submission_nonce() ) {
       return [];
     }
 
     $values = [];
-    if ( isset( $request_post['pwtsr_tracking'] ) && is_array( $request_post['pwtsr_tracking'] ) ) {
+    $tracking_payload = [];
+    if ( isset( $_POST['pwtsr_tracking'] ) ) {
+      $tracking_raw = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above.
+      if ( is_array( $tracking_raw ) ) {
+        $tracking_payload = $tracking_raw;
+      }
+    }
+
+    if ( ! empty( $tracking_payload ) ) {
       foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FLUENT_FORMS ) as $key ) {
-        if ( ! isset( $request_post['pwtsr_tracking'][ $key ] ) || is_array( $request_post['pwtsr_tracking'][ $key ] ) ) {
+        if ( ! isset( $tracking_payload[ $key ] ) || is_array( $tracking_payload[ $key ] ) || ! is_scalar( $tracking_payload[ $key ] ) ) {
           continue;
         }
 
-        $values[ $key ] = $request_post['pwtsr_tracking'][ $key ];
+        $values[ $key ] = $this->service->sanitize_tracking_value( $key, (string) $tracking_payload[ $key ] );
       }
 
       if ( ! empty( $values ) ) {
@@ -590,14 +600,51 @@ trait PWTSR_Fluent_Forms_Trait {
     }
 
     foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FLUENT_FORMS ) as $key ) {
-      if ( ! isset( $request_post[ $key ] ) || is_array( $request_post[ $key ] ) ) {
+      if ( ! isset( $_POST[ $key ] ) || is_array( $_POST[ $key ] ) ) {
         continue;
       }
 
-      $values[ $key ] = $request_post[ $key ];
+      $raw = wp_unslash( $_POST[ $key ] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above.
+      if ( ! is_scalar( $raw ) ) {
+        continue;
+      }
+
+      $values[ $key ] = $this->service->sanitize_tracking_value( $key, (string) $raw );
     }
 
     return $values;
+  }
+
+  /**
+   * Verify Fluent Forms submission nonce from current request payload.
+   *
+   * @return bool
+   */
+  private function is_valid_fluent_forms_submission_nonce() {
+    if ( empty( $_POST ) || ! is_array( $_POST ) ) {
+      return false;
+    }
+
+    if ( ! isset( $_POST['form_id'] ) || is_array( $_POST['form_id'] ) ) {
+      return false;
+    }
+
+    $form_id = absint( wp_unslash( $_POST['form_id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce action validation.
+    if ( ! $form_id ) {
+      return false;
+    }
+
+    $nonce_key = sprintf( '_fluentform_%d_fluentformnonce', $form_id );
+    if ( ! isset( $_POST[ $nonce_key ] ) || is_array( $_POST[ $nonce_key ] ) ) {
+      return false;
+    }
+
+    $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce verification.
+    if ( '' === $nonce ) {
+      return false;
+    }
+
+    return (bool) wp_verify_nonce( $nonce, 'fluentform-submit-form' );
   }
 
   /**

@@ -22,6 +22,7 @@ final class PWTSR {
   const ASSET_HANDLE_STYLE = 'presswell-signal-relay-css';
   const ASSET_HANDLE_DEBUG_STYLE = 'presswell-signal-relay-debug-css';
   const ASSET_HANDLE_DEBUG_SCRIPT = 'presswell-signal-relay-debug-js';
+  const ASSET_HANDLE_GRAVITY_EDITOR_SCRIPT = 'presswell-signal-relay-gravity-editor-js';
 
   const STORAGE_KEY = 'pwSignalRelay';
   const TTL_SECONDS = 3600;

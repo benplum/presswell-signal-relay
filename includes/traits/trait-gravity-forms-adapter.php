@@ -20,7 +20,7 @@ trait PWTSR_Gravity_Forms_Trait {
     GF_Fields::register( new PWTSR_Gravity_Forms_Field() );
 
     add_action( 'gform_editor_js_set_default_values', [ $this, 'output_editor_defaults_js' ] );
-    add_action( 'gform_editor_js', [ $this, 'output_editor_guard_js' ] );
+    add_action( 'admin_enqueue_scripts', [ $this, 'maybe_enqueue_editor_guard_script' ] );
     add_action( 'gform_enqueue_scripts', [ $this, 'maybe_enqueue_assets' ], 10, 2 );
     add_filter( 'gform_pre_form_editor_save', [ $this, 'enforce_single_tracking_field' ] );
     add_filter( 'gform_pre_render', [ $this, 'enforce_single_tracking_field' ], 5 );
@@ -165,8 +165,13 @@ trait PWTSR_Gravity_Forms_Trait {
    * @return array
    */
   public function sanitize_tracking_submission_values( $form ) {
-    // phpcs:disable WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Gravity Forms validates nonce and payload before this hook runs.
+    // phpcs:disable WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce is validated before request data is consumed.
     if ( empty( $form['fields'] ) || ! is_array( $form['fields'] ) || empty( $_POST ) || ! is_array( $_POST ) ) {
+      return $form;
+    }
+
+    $form_id = isset( $form['id'] ) ? absint( $form['id'] ) : 0;
+    if ( ! $this->is_valid_gravity_forms_submission_nonce( $form_id ) ) {
       return $form;
     }
 
@@ -207,43 +212,77 @@ trait PWTSR_Gravity_Forms_Trait {
   }
 
   /**
-   * Block editors from inserting multiple tracking fields.
+   * Validate Gravity Forms submit nonce for the current form.
+   *
+   * @param int $form_id Form id.
+   *
+   * @return bool
    */
-  public function output_editor_guard_js() {
-    ?>
-    <script type="text/javascript">
-      (function (window, document) {
-        var slug = '<?php echo esc_js( PWTSR::FIELD_TYPE ); ?>';
-        var warning = '<?php echo esc_js( __( 'Only one Tracking field can be added per form.', 'presswell-signal-relay' ) ); ?>';
+  private function is_valid_gravity_forms_submission_nonce( $form_id ) {
+    $form_id = absint( $form_id );
+    if ( ! $form_id ) {
+      return false;
+    }
 
-        function guardSingleField() {
-          if (typeof window.StartAddField !== 'function' || window.StartAddField._presswellTransceiverGuard) {
-            return typeof window.StartAddField === 'function';
-          }
+    $nonce_key = '_gform_submit_nonce_' . $form_id;
+    if ( ! isset( $_POST[ $nonce_key ] ) || is_array( $_POST[ $nonce_key ] ) ) {
+      return false;
+    }
 
-          var originalStartAddField = window.StartAddField;
-          window.StartAddField = function (type) {
-            if (type === slug && typeof window.GetFieldsByType === 'function') {
-              var existing = window.GetFieldsByType([slug]) || [];
-              if (existing.length) {
-                window.alert(warning);
-                return;
-              }
-            }
+    $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) );
+    if ( '' === $nonce ) {
+      return false;
+    }
 
-            return originalStartAddField.apply(this, arguments);
-          };
+    return (bool) wp_verify_nonce( $nonce, 'gform_submit_' . $form_id );
+  }
 
-          window.StartAddField._presswellTransceiverGuard = true;
-          return true;
-        }
+  /**
+   * Enqueue editor guard script on Gravity Forms form editor screens.
+   */
+  public function maybe_enqueue_editor_guard_script() {
+    if ( ! is_admin() ) {
+      return;
+    }
 
-        if (!guardSingleField()) {
-          document.addEventListener('DOMContentLoaded', guardSingleField);
-        }
-      })(window, document);
-    </script>
-    <?php
+    $screen_id = '';
+    if ( function_exists( 'get_current_screen' ) ) {
+      $screen = get_current_screen();
+      if ( is_object( $screen ) && isset( $screen->id ) ) {
+        $screen_id = (string) $screen->id;
+      }
+    }
+
+    $page_raw = filter_input( INPUT_GET, 'page', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+    $page     = is_string( $page_raw ) ? sanitize_key( $page_raw ) : '';
+
+    $is_gravity_editor_screen = false !== strpos( $screen_id, 'gf_edit_forms' ) || 'gf_edit_forms' === $page;
+    if ( ! $is_gravity_editor_screen ) {
+      return;
+    }
+
+    wp_enqueue_script(
+      PWTSR::ASSET_HANDLE_GRAVITY_EDITOR_SCRIPT,
+      plugin_dir_url( Presswell_Tracking_Signal_Relay::PLUGIN_FILE ) . 'assets/js/gravity-editor-guard.js',
+      [],
+      PWTSR::VERSION,
+      true
+    );
+
+    $config = wp_json_encode(
+      [
+        'fieldType' => PWTSR::FIELD_TYPE,
+        'warning'   => __( 'Only one Tracking field can be added per form.', 'presswell-signal-relay' ),
+      ]
+    );
+
+    if ( is_string( $config ) && '' !== $config ) {
+      wp_add_inline_script(
+        PWTSR::ASSET_HANDLE_GRAVITY_EDITOR_SCRIPT,
+        "window.presswellSignalRelayGravityEditor={$config};",
+        'before'
+      );
+    }
   }
 
   /**

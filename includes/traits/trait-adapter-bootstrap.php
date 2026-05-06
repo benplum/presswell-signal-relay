@@ -50,8 +50,8 @@ trait PWTSR_Adapter_Bootstrap_Trait {
       }
     }
 
-    $page_raw = filter_input( INPUT_GET, 'page', FILTER_UNSAFE_RAW );
-    $page = is_string( $page_raw ) ? sanitize_key( wp_unslash( $page_raw ) ) : '';
+    $page_raw = filter_input( INPUT_GET, 'page', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+    $page = is_string( $page_raw ) ? sanitize_key( $page_raw ) : '';
 
     $is_fluent_screen  = false !== strpos( $screen_id, 'fluentform' )
       || false !== strpos( $page, 'fluentform' )
