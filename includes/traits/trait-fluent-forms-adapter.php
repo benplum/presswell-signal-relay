@@ -573,7 +573,22 @@ trait PWTSR_Fluent_Forms_Trait {
       return [];
     }
 
-    if ( ! $this->is_valid_fluent_forms_submission_nonce() ) {
+    if ( ! isset( $_POST['form_id'] ) || is_array( $_POST['form_id'] ) ) {
+      return [];
+    }
+
+    $form_id = absint( wp_unslash( $_POST['form_id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce action validation.
+    if ( ! $form_id ) {
+      return [];
+    }
+
+    $nonce_key = sprintf( '_fluentform_%d_fluentformnonce', $form_id );
+    if ( ! isset( $_POST[ $nonce_key ] ) || is_array( $_POST[ $nonce_key ] ) ) {
+      return [];
+    }
+
+    $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce verification.
+    if ( '' === $nonce || ! wp_verify_nonce( $nonce, 'fluentform-submit-form' ) ) {
       return [];
     }
 
@@ -616,38 +631,6 @@ trait PWTSR_Fluent_Forms_Trait {
     }
 
     return $values;
-  }
-
-  /**
-   * Verify Fluent Forms submission nonce from current request payload.
-   *
-   * @return bool
-   */
-  private function is_valid_fluent_forms_submission_nonce() {
-    if ( empty( $_POST ) || ! is_array( $_POST ) ) {
-      return false;
-    }
-
-    if ( ! isset( $_POST['form_id'] ) || is_array( $_POST['form_id'] ) ) {
-      return false;
-    }
-
-    $form_id = absint( wp_unslash( $_POST['form_id'] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce action validation.
-    if ( ! $form_id ) {
-      return false;
-    }
-
-    $nonce_key = sprintf( '_fluentform_%d_fluentformnonce', $form_id );
-    if ( ! isset( $_POST[ $nonce_key ] ) || is_array( $_POST[ $nonce_key ] ) ) {
-      return false;
-    }
-
-    $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce verification.
-    if ( '' === $nonce ) {
-      return false;
-    }
-
-    return (bool) wp_verify_nonce( $nonce, 'fluentform-submit-form' );
   }
 
   /**

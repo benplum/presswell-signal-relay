@@ -198,11 +198,13 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
         $wrapper_classes .= ' gform-theme__disable-reset';
       }
 
-      return PWTSR_Transceiver_Markup::render_wrapper(
-        $wrapper_classes,
-        'gravity',
-        implode( '', $input_tag ),
-        $debug_mode
+      return PWTSR_Transceiver_Markup::sanitize_wrapper_markup(
+        PWTSR_Transceiver_Markup::render_wrapper(
+          $wrapper_classes,
+          'gravity',
+          implode( '', $input_tag ),
+          $debug_mode
+        )
       );
     }
 

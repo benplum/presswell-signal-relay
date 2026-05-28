@@ -180,12 +180,12 @@ if ( ! class_exists( 'PWTSR_WPForms_Field' ) ) {
         return;
       }
 
-      echo PWTSR_Transceiver_Markup::sanitize_wrapper_markup( PWTSR_Transceiver_Markup::render_wrapper(
+      echo wp_kses( PWTSR_Transceiver_Markup::render_wrapper(
         'presswell-transceiver presswell-wpforms-transceiver',
         PWTSR::ADAPTER_WPFORMS,
         $inputs,
         $this->is_debug_field_mode()
-      ) );
+      ), PWTSR_Transceiver_Markup::get_wrapper_allowed_html() );
     }
 
     /**

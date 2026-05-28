@@ -10,6 +10,45 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class PWTSR_Transceiver_Markup {
 
   /**
+   * Allowed tags/attributes for transceiver wrapper output.
+   *
+   * @return array
+   */
+  public static function get_wrapper_allowed_html() {
+    return [
+      'div' => [
+        'class' => true,
+        'data-presswell-transceiver' => true,
+        'data-presswell-transceiver-adapter' => true,
+        'aria-hidden' => true,
+        'style' => true,
+        'hidden' => true,
+      ],
+      'button' => [
+        'type' => true,
+        'class' => true,
+        'aria-expanded' => true,
+      ],
+      'span' => [
+        'class' => true,
+        'aria-hidden' => true,
+      ],
+      'label' => [
+        'class' => true,
+        'for' => true,
+      ],
+      'input' => [
+        'type' => true,
+        'id' => true,
+        'name' => true,
+        'value' => true,
+        'readonly' => true,
+        'data-presswell-transceiver' => true,
+      ],
+    ];
+  }
+
+  /**
    * Sanitize rendered transceiver wrapper markup with a strict allowlist.
    *
    * @param string $markup Wrapper markup.
@@ -19,37 +58,7 @@ final class PWTSR_Transceiver_Markup {
   public static function sanitize_wrapper_markup( $markup ) {
     return wp_kses(
       (string) $markup,
-      [
-        'div' => [
-          'class' => true,
-          'data-presswell-transceiver' => true,
-          'data-presswell-transceiver-adapter' => true,
-          'aria-hidden' => true,
-          'style' => true,
-          'hidden' => true,
-        ],
-        'button' => [
-          'type' => true,
-          'class' => true,
-          'aria-expanded' => true,
-        ],
-        'span' => [
-          'class' => true,
-          'aria-hidden' => true,
-        ],
-        'label' => [
-          'class' => true,
-          'for' => true,
-        ],
-        'input' => [
-          'type' => true,
-          'id' => true,
-          'name' => true,
-          'value' => true,
-          'readonly' => true,
-          'data-presswell-transceiver' => true,
-        ],
-      ]
+      self::get_wrapper_allowed_html()
     );
   }
 

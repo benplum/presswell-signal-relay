@@ -95,6 +95,6 @@ trait PWTSR_Pages_Trait {
       return $version_text;
     }
 
-    return 'Tracking Signal Relay v' . PWTSR::VERSION;
+    return 'Tracking Signal Relay v' . esc_html( PWTSR::VERSION );
   }
 }

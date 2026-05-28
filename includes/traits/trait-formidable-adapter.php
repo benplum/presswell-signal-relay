@@ -159,10 +159,17 @@ trait PWTSR_Formidable_Trait {
     $posted_tracking = [];
     if ( isset( $values['pwtsr_tracking'] ) && is_array( $values['pwtsr_tracking'] ) ) {
       $posted_tracking = $values['pwtsr_tracking'];
-    } elseif ( $this->is_valid_formidable_submission_nonce( $values, $form_id ) ) {
-      // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is validated in the conditional branch guard above.
+    } else {
+      // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Presence check only; nonce is validated before request data is consumed.
       if ( isset( $_POST['pwtsr_tracking'] ) && is_array( $_POST['pwtsr_tracking'] ) ) {
-        $posted_tracking = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce validated above; values are sanitized below.
+        $nonce_key = 'frm_submit_entry_' . $form_id;
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce verification.
+        if ( isset( $_POST[ $nonce_key ] ) && ! is_array( $_POST[ $nonce_key ] ) ) {
+          $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) );
+          if ( '' !== $nonce && wp_verify_nonce( $nonce, 'frm_submit_entry_nonce' ) ) {
+            $posted_tracking = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above; values are sanitized below.
+          }
+        }
       }
     }
 
@@ -181,36 +188,6 @@ trait PWTSR_Formidable_Trait {
     unset( $values['pwtsr_tracking'] );
 
     return $values;
-  }
-
-  /**
-   * Validate Formidable front-end entry nonce.
-   *
-   * @param array $values  Entry payload.
-   * @param int   $form_id Form id.
-   *
-   * @return bool
-   */
-  private function is_valid_formidable_submission_nonce( $values, $form_id ) {
-    $form_id = absint( $form_id );
-    if ( ! $form_id ) {
-      return false;
-    }
-
-    $nonce_key = 'frm_submit_entry_' . $form_id;
-    $nonce     = '';
-
-    if ( is_array( $values ) && isset( $values[ $nonce_key ] ) && ! is_array( $values[ $nonce_key ] ) ) {
-      $nonce = (string) $values[ $nonce_key ];
-    } elseif ( isset( $_POST[ $nonce_key ] ) && ! is_array( $_POST[ $nonce_key ] ) ) {
-      $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce verification.
-    }
-
-    if ( '' === $nonce ) {
-      return false;
-    }
-
-    return (bool) wp_verify_nonce( $nonce, 'frm_submit_entry_nonce' );
   }
 
   /**

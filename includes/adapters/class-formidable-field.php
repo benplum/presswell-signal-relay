@@ -75,11 +75,13 @@ if ( class_exists( 'FrmFieldHidden' ) && ! class_exists( 'PWTSR_Formidable_Field
         return '';
       }
 
-      return PWTSR_Transceiver_Markup::render_wrapper(
-        'presswell-transceiver presswell-formidable-transceiver',
-        PWTSR::ADAPTER_FORMIDABLE,
-        implode( '', $inputs ),
-        $this->is_debug_field_mode()
+      return PWTSR_Transceiver_Markup::sanitize_wrapper_markup(
+        PWTSR_Transceiver_Markup::render_wrapper(
+          'presswell-transceiver presswell-formidable-transceiver',
+          PWTSR::ADAPTER_FORMIDABLE,
+          implode( '', $inputs ),
+          $this->is_debug_field_mode()
+        )
       );
     }
 

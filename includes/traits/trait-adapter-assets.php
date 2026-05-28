@@ -60,9 +60,14 @@ trait PWTSR_Adapter_Assets_Trait {
       return;
     }
 
+    $object_key = wp_json_encode( $object_name );
+    if ( ! is_string( $object_key ) || '' === $object_key ) {
+      return;
+    }
+
     wp_add_inline_script(
       PWTSR::ASSET_HANDLE_SCRIPT,
-      sprintf( 'window.%s=%s;', $object_name, $payload ),
+      'window[' . $object_key . ']=' . $payload . ';',
       'before'
     );
 
@@ -177,11 +182,13 @@ trait PWTSR_Adapter_Assets_Trait {
    * @return string
    */
   protected function wrap_transceiver_inputs_markup( $adapter, $inputs ) {
-    return PWTSR_Transceiver_Markup::render_wrapper(
-      $this->get_transceiver_classes( $adapter ),
-      $adapter,
-      $inputs,
-      $this->is_debug_field_mode()
+    return PWTSR_Transceiver_Markup::sanitize_wrapper_markup(
+      PWTSR_Transceiver_Markup::render_wrapper(
+        $this->get_transceiver_classes( $adapter ),
+        $adapter,
+        $inputs,
+        $this->is_debug_field_mode()
+      )
     );
   }
 }

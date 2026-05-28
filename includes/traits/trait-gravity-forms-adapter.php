@@ -166,7 +166,17 @@ trait PWTSR_Gravity_Forms_Trait {
     }
 
     $form_id = isset( $form['id'] ) ? absint( $form['id'] ) : 0;
-    if ( ! $this->is_valid_gravity_forms_submission_nonce( $form_id ) ) {
+    if ( ! $form_id ) {
+      return $form;
+    }
+
+    $nonce_key = '_gform_submit_nonce_' . $form_id;
+    if ( ! isset( $_POST[ $nonce_key ] ) || is_array( $_POST[ $nonce_key ] ) ) {
+      return $form;
+    }
+
+    $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) );
+    if ( '' === $nonce || ! wp_verify_nonce( $nonce, 'gform_submit_' . $form_id ) ) {
       return $form;
     }
 
@@ -204,32 +214,6 @@ trait PWTSR_Gravity_Forms_Trait {
     // phpcs:enable WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
     return $form;
-  }
-
-  /**
-   * Validate Gravity Forms submit nonce for the current form.
-   *
-   * @param int $form_id Form id.
-   *
-   * @return bool
-   */
-  private function is_valid_gravity_forms_submission_nonce( $form_id ) {
-    $form_id = absint( $form_id );
-    if ( ! $form_id ) {
-      return false;
-    }
-
-    $nonce_key = '_gform_submit_nonce_' . $form_id;
-    if ( ! isset( $_POST[ $nonce_key ] ) || is_array( $_POST[ $nonce_key ] ) ) {
-      return false;
-    }
-
-    $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) );
-    if ( '' === $nonce ) {
-      return false;
-    }
-
-    return (bool) wp_verify_nonce( $nonce, 'gform_submit_' . $form_id );
   }
 
   /**
