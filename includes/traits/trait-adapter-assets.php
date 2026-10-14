@@ -17,62 +17,14 @@ trait PWTSR_Adapter_Assets_Trait {
   private $debug_field_mode = null;
 
   /**
-   * Ensure runtime script is registered once.
-   */
-  private function register_tracking_assets() {
-    if ( $this->assets_registered ) {
-      return;
-    }
-
-    wp_register_script(
-      PWTSR::ASSET_HANDLE_SCRIPT,
-      plugin_dir_url( Presswell_Tracking_Signal_Relay::PLUGIN_FILE ) . 'assets/js/transceiver.js',
-      [],
-      PWTSR::VERSION,
-      true
-    );
-
-    $this->assets_registered = true;
-  }
-
-  /**
-   * Enqueue and localize tracking script.
+   * Make sure the tracking script is on a page that renders a form.
    *
-   * @param string $context Integration context.
+   * The main plugin usually loads it site-wide already; this covers sites that turn that
+   * off with the pwtsr_enqueue_tracking_script filter.
    */
-  protected function enqueue_tracking_script( $context = 'core' ) {
-    static $config_injected = false;
-
-    $this->register_tracking_assets();
-
-    wp_enqueue_script( PWTSR::ASSET_HANDLE_SCRIPT );
+  protected function enqueue_tracking_script() {
+    presswell_tracking_signal_relay()->enqueue_tracking_assets();
     $this->maybe_enqueue_debug_assets();
-
-    if ( $config_injected ) {
-      return;
-    }
-
-    $config      = $this->service->get_client_config( $context );
-    $object_name = preg_replace( '/[^A-Za-z0-9_$]/', '', (string) PWTSR::JS_OBJECT );
-    $payload     = wp_json_encode( $config );
-
-    if ( ! is_string( $payload ) || '' === $payload || '' === $object_name ) {
-      return;
-    }
-
-    $object_key = wp_json_encode( $object_name );
-    if ( ! is_string( $object_key ) || '' === $object_key ) {
-      return;
-    }
-
-    wp_add_inline_script(
-      PWTSR::ASSET_HANDLE_SCRIPT,
-      'window[' . $object_key . ']=' . $payload . ';',
-      'before'
-    );
-
-    $this->localized_objects[ PWTSR::JS_OBJECT ] = true;
-    $config_injected = true;
   }
 
   /**
@@ -107,74 +59,33 @@ trait PWTSR_Adapter_Assets_Trait {
   }
 
   /**
-   * Determine whether debug field mode should be active for the current request.
+   * Whether debug field mode is active, cached for the request.
    *
    * @return bool
    */
   protected function is_debug_field_mode() {
-    if ( null !== $this->debug_field_mode ) {
-      return $this->debug_field_mode;
+    if ( null === $this->debug_field_mode ) {
+      $this->debug_field_mode = PWTSR_Transceiver_Markup::is_debug_mode();
     }
-
-    $enabled = false;
-    if ( function_exists( 'presswell_tracking_signal_relay' ) ) {
-      $plugin = presswell_tracking_signal_relay();
-      if ( $plugin && method_exists( $plugin, 'should_show_debug_styles' ) ) {
-        $enabled = (bool) $plugin->should_show_debug_styles();
-      }
-    }
-
-    $this->debug_field_mode = $enabled;
 
     return $this->debug_field_mode;
   }
 
   /**
-   * Build shared transceiver wrapper classes.
+   * Render one tracking input.
    *
-   * @param string $adapter Adapter slug for adapter-specific class name.
-   *
-   * @return string
-   */
-  protected function get_transceiver_classes( $adapter ) {
-    $adapter = sanitize_html_class( (string) $adapter );
-
-    return trim( 'presswell-transceiver presswell-' . $adapter . '-transceiver ' );
-  }
-
-  /**
-   * Render a tracking input that switches between hidden and debug-friendly markup.
-   *
-   * @param string $key    Tracking key label.
-   * @param string $name   Input name attribute.
-   * @param string $id     Input id attribute.
-   * @param string $value  Input value.
+   * @param string $key  Tracking key.
+   * @param string $name Input name attribute.
+   * @param string $id   Input id attribute.
    *
    * @return string
    */
-  protected function render_transceiver_input_markup( $key, $name, $id, $value = '' ) {
-    if ( $this->is_debug_field_mode() ) {
-      return sprintf(
-        '<div class="presswell-debug-field-row"><label class="presswell-debug-field-label" for="%1$s">%2$s</label><input type="text" id="%1$s" name="%3$s" value="%4$s" readonly="readonly" data-presswell-transceiver="%5$s" /></div>',
-        esc_attr( $id ),
-        esc_html( $key ),
-        esc_attr( $name ),
-        esc_attr( $value ),
-        esc_attr( $key )
-      );
-    }
-
-    return sprintf(
-      '<input type="hidden" id="%1$s" name="%2$s" value="%3$s" data-presswell-transceiver="%4$s" />',
-      esc_attr( $id ),
-      esc_attr( $name ),
-      esc_attr( $value ),
-      esc_attr( $key )
-    );
+  protected function render_transceiver_input_markup( $key, $name, $id ) {
+    return PWTSR_Transceiver_Markup::render_input( $key, $name, $id, $this->is_debug_field_mode() );
   }
 
   /**
-   * Wrap tracking inputs in a shared transceiver container.
+   * Wrap tracking inputs in the shared container.
    *
    * @param string $adapter Adapter slug.
    * @param string $inputs  Inputs HTML.
@@ -182,13 +93,6 @@ trait PWTSR_Adapter_Assets_Trait {
    * @return string
    */
   protected function wrap_transceiver_inputs_markup( $adapter, $inputs ) {
-    return PWTSR_Transceiver_Markup::sanitize_wrapper_markup(
-      PWTSR_Transceiver_Markup::render_wrapper(
-        $this->get_transceiver_classes( $adapter ),
-        $adapter,
-        $inputs,
-        $this->is_debug_field_mode()
-      )
-    );
+    return PWTSR_Transceiver_Markup::render( $adapter, $inputs, $this->is_debug_field_mode() );
   }
 }

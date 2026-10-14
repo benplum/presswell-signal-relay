@@ -67,7 +67,7 @@ trait PWTSR_Adapter_Bootstrap_Trait {
     }
 
     wp_enqueue_style(
-      'presswell-signal-relay-builder-icons',
+      PWTSR::ASSET_HANDLE_BUILDER_ICONS_STYLE,
       $this->get_asset_url( 'css/builder-icons.css' ),
       [],
       PWTSR::VERSION
@@ -117,7 +117,6 @@ trait PWTSR_Adapter_Bootstrap_Trait {
         'detector' => [ $this, 'is_contact_form_7_available' ],
         'class'    => 'PWTSR_Contact_Form_7_Adapter',
         'files'    => [
-          'includes/traits/trait-adapter-assets.php',
           'includes/traits/trait-contact-form-7-adapter.php',
           'includes/adapters/class-contact-form-7-adapter.php',
         ],
@@ -125,7 +124,6 @@ trait PWTSR_Adapter_Bootstrap_Trait {
         'detector' => [ $this, 'is_fluent_forms_available' ],
         'class'    => 'PWTSR_Fluent_Forms_Adapter',
         'files'    => [
-          'includes/traits/trait-adapter-assets.php',
           'includes/traits/trait-fluent-forms-adapter.php',
           'includes/adapters/class-fluent-forms-field.php',
           'includes/adapters/class-fluent-forms-adapter.php',
@@ -135,7 +133,6 @@ trait PWTSR_Adapter_Bootstrap_Trait {
         'detector' => [ $this, 'is_formidable_available' ],
         'class'    => 'PWTSR_Formidable_Adapter',
         'files'    => [
-          'includes/traits/trait-adapter-assets.php',
           'includes/traits/trait-formidable-adapter.php',
           'includes/adapters/class-formidable-field.php',
           'includes/adapters/class-formidable-adapter.php',
@@ -145,7 +142,6 @@ trait PWTSR_Adapter_Bootstrap_Trait {
         'detector' => [ $this, 'is_forminator_available' ],
         'class'    => 'PWTSR_Forminator_Adapter',
         'files'    => [
-          'includes/traits/trait-adapter-assets.php',
           'includes/traits/trait-forminator-adapter.php',
           'includes/adapters/class-forminator-adapter.php',
         ],
@@ -154,26 +150,15 @@ trait PWTSR_Adapter_Bootstrap_Trait {
         'detector' => [ $this, 'is_gravity_forms_available' ],
         'class'    => 'PWTSR_Gravity_Forms_Adapter',
         'files'    => [
-          'includes/traits/trait-adapter-assets.php',
           'includes/traits/trait-gravity-forms-adapter.php',
           'includes/adapters/class-gravity-forms-field.php',
           'includes/adapters/class-gravity-forms-adapter.php',
         ],
       ],
-      // [
-      //   'detector' => [ $this, 'is_ninja_forms_available' ],
-      //   'class'    => 'PWTSR_Ninja_Forms_Adapter',
-      //   'files'    => [
-      //     'includes/traits/trait-adapter-assets.php',
-      //     'includes/traits/trait-ninja-forms-adapter.php',
-      //     'includes/adapters/class-ninja-forms-adapter.php',
-      //   ],
-      // ],
       [
         'detector' => [ $this, 'is_wpforms_available' ],
         'class'    => 'PWTSR_WPForms_Adapter',
         'files'    => [
-          'includes/traits/trait-adapter-assets.php',
           'includes/traits/trait-wpforms-adapter.php',
           'includes/adapters/class-wpforms-adapter.php',
         ],
@@ -226,22 +211,18 @@ trait PWTSR_Adapter_Bootstrap_Trait {
     return class_exists( 'GFForms' );
   }
   
-  // /**
-  //  * Determine whether Ninja Forms is loaded.
-  //  *
-  //  * @return bool
-  //  */
-  // private function is_ninja_forms_available() {
-  //   return defined( 'NINJA_FORMS_VERSION' ) || class_exists( 'Ninja_Forms' ) || function_exists( 'Ninja_Forms' );
-  // }
-
   /**
    * Determine whether WPForms is loaded.
    *
    * @return bool
    */
   private function is_wpforms_available() {
-    return defined( 'WPFORMS_VERSION' ) || function_exists( 'wpforms' ) || class_exists( '\\WPForms\\WPForms' );
+    if ( ! defined( 'WPFORMS_VERSION' ) || ! function_exists( 'wpforms' ) ) {
+      return false;
+    }
+
+    // The adapter relies on wpforms()->obj() and wpforms_validate_field_id(), added in 1.9.1.
+    return version_compare( (string) WPFORMS_VERSION, PWTSR::WPFORMS_MIN_VERSION, '>=' );
   }
   
 }

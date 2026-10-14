@@ -4,7 +4,7 @@
     return;
   }
 
-  var closedFlagCookieKey = 'pwsrDebugClosed';
+  var closedFlagCookieKey = 'pwtsr_debug_closed';
   var cookieMaxAgeSeconds = 60 * 60 * 24 * 365;
   var bound = false;
 
@@ -61,14 +61,14 @@
   }
 
   function applyState(open) {
-    var containers = document.querySelectorAll('.presswell-transceiver');
+    var containers = document.querySelectorAll('.pwtsr-transceiver');
     if (!containers.length) {
       return;
     }
 
     containers.forEach(function (container) {
-      var toggle = container.querySelector('.presswell-debug-toggle');
-      var panel = container.querySelector('.presswell-debug-fields');
+      var toggle = container.querySelector('.pwtsr-debug-toggle');
+      var panel = container.querySelector('.pwtsr-debug-fields');
       if (!toggle || !panel) {
         return;
       }
@@ -84,7 +84,7 @@
     }
 
     document.addEventListener('click', function (event) {
-      var toggle = event.target && event.target.closest ? event.target.closest('.presswell-debug-toggle') : null;
+      var toggle = event.target && event.target.closest ? event.target.closest('.pwtsr-debug-toggle') : null;
       if (!toggle) {
         return;
       }

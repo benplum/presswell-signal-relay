@@ -1,55 +1,49 @@
 (function (window, document) {
   'use strict';
 
-  var config = window.presswellSignalRelayGravityEditor || {};
+  var config = window.PWTSR_GRAVITY_EDITOR || {};
   var slug = typeof config.fieldType === 'string' ? config.fieldType : '';
+  var title = typeof config.title === 'string' ? config.title : '';
   var warning = typeof config.warning === 'string' ? config.warning : '';
 
   if (!slug) {
     return;
   }
 
-  function guardSingleField() {
-    if (typeof window.StartAddField !== 'function') {
+  function showWarning() {
+    var gform = window.gform;
+    if (gform && gform.instances && typeof gform.instances.dialogAlert === 'function') {
+      gform.instances.dialogAlert(title, warning);
+      return;
+    }
+
+    window.alert(warning);
+  }
+
+  // Gravity Forms runs this filter from CanFieldBeAdded() before adding any field.
+  function canFieldBeAdded(canBeAdded, type) {
+    if (!canBeAdded || type !== slug || typeof window.GetFieldsByType !== 'function') {
+      return canBeAdded;
+    }
+
+    if ((window.GetFieldsByType([slug]) || []).length) {
+      showWarning();
       return false;
     }
 
-    if (window.StartAddField._presswellTransceiverGuard) {
-      return true;
+    return canBeAdded;
+  }
+
+  function register() {
+    if (!window.gform || typeof window.gform.addFilter !== 'function') {
+      return false;
     }
 
-    var originalStartAddField = window.StartAddField;
-    window.StartAddField = function (type) {
-      if (type === slug && typeof window.GetFieldsByType === 'function') {
-        var existing = window.GetFieldsByType([slug]) || [];
-        if (existing.length) {
-          window.alert(warning);
-          return;
-        }
-      }
-
-      return originalStartAddField.apply(this, arguments);
-    };
-
-    window.StartAddField._presswellTransceiverGuard = true;
+    window.gform.addFilter('gform_form_editor_can_field_be_added', canFieldBeAdded);
     return true;
   }
 
-  if (guardSingleField()) {
-    return;
+  if (!register() && document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', register);
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', guardSingleField);
-  }
-
-  var attempts = 0;
-  var maxAttempts = 20;
-  var timer = window.setInterval(function () {
-    attempts += 1;
-
-    if (guardSingleField() || attempts >= maxAttempts) {
-      window.clearInterval(timer);
-    }
-  }, 250);
 })(window, document);

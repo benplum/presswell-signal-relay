@@ -11,7 +11,7 @@
   box-shadow: none !important;
 }
 
-.presswell-transceiver {
+.pwtsr-transceiver {
   display: block !important;
   position: relative !important;
   width: auto !important;
@@ -28,12 +28,12 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
-.presswell-transceiver,
-.presswell-transceiver * {
+.pwtsr-transceiver,
+.pwtsr-transceiver * {
   box-sizing: border-box !important;
 }
 
-.presswell-debug-field-row {
+.pwtsr-debug-field-row {
   display: grid !important;
   grid-template-columns: minmax(140px, 220px) minmax(0, 1fr);
   gap: 10px !important;
@@ -43,11 +43,12 @@
   border-top: 1px solid rgba(129, 140, 156, 0.2) !important;
 }
 
-.presswell-debug-fields .presswell-debug-field-row:first-child {
+/* The consent notice comes first in the panel, so match the first row by type. */
+.pwtsr-debug-fields div.pwtsr-debug-field-row:first-of-type {
   border-top: 0 !important;
 }
 
-.presswell-transceiver .presswell-debug-toggle {
+.pwtsr-transceiver .pwtsr-debug-toggle {
   appearance: none !important;
   -webkit-appearance: none !important;
   width: 100% !important;
@@ -68,14 +69,14 @@
   text-decoration: none !important;
 }
 
-.presswell-debug-toggle-label {
+.pwtsr-debug-toggle-label {
   font: 600 12px/1.2 monospace !important;
   letter-spacing: 0.1em !important;
   line-height: 1.2 !important;
   text-transform: uppercase !important;
 }
 
-.presswell-debug-toggle-arrow {
+.pwtsr-debug-toggle-arrow {
   width: 8px !important;
   height: 8px !important;
   border-right: 2px solid #94a3b8 !important;
@@ -84,14 +85,14 @@
   margin-bottom: 3px !important;
 }
 
-.presswell-debug-toggle[aria-expanded="true"] .presswell-debug-toggle-arrow {
+.pwtsr-debug-toggle[aria-expanded="true"] .pwtsr-debug-toggle-arrow {
   transform: rotate(-135deg) !important;
   margin-bottom: -3px !important;
 }
 
-.presswell-transceiver .presswell-debug-toggle:hover,
-.presswell-transceiver .presswell-debug-toggle:focus,
-.presswell-transceiver .presswell-debug-toggle:active {
+.pwtsr-transceiver .pwtsr-debug-toggle:hover,
+.pwtsr-transceiver .pwtsr-debug-toggle:focus,
+.pwtsr-transceiver .pwtsr-debug-toggle:active {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
@@ -99,16 +100,16 @@
   outline: none !important;
 }
 
-.presswell-transceiver .presswell-debug-toggle:focus-visible {
+.pwtsr-transceiver .pwtsr-debug-toggle:focus-visible {
   outline: 1px solid #475569 !important;
   outline-offset: 2px !important;
 }
 
-.presswell-debug-fields[hidden] {
+.pwtsr-debug-fields[hidden] {
   display: none !important;
 }
 
-.presswell-debug-field-label {
+.pwtsr-debug-field-label {
   font-size: 12px !important;
   color: #93a5be !important;
   font-weight: 600 !important;
@@ -117,7 +118,7 @@
   overflow-wrap: anywhere !important;
 }
 
-.presswell-transceiver input[type="text"][readonly] {
+.pwtsr-transceiver input[type="text"][readonly] {
   width: 100% !important;
   height: auto !important;
   max-width: 100% !important;
@@ -132,11 +133,24 @@
   text-align: left !important;
 }
 
-.presswell-transceiver input[type="text"][readonly]:focus {
+.pwtsr-transceiver input[type="text"][readonly]:focus {
   outline: 1px solid #475569 !important;
   box-shadow: none !important;
 }
 
-.presswell-fluent-transceiver {
+.pwtsr-fluent-transceiver {
   margin: 20px 0 !important;
+}
+.pwtsr-debug-consent {
+  margin: 8px 0 !important;
+  padding: 6px 8px !important;
+  border-left: 3px solid #dba617 !important;
+  background: rgba(219, 166, 23, 0.12) !important;
+  color: #f0c33c !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+
+.pwtsr-debug-consent[hidden] {
+  display: none !important;
 }

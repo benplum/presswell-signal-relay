@@ -2,49 +2,35 @@
 
 ## One-time setup
 
-1. `cd /Users/bp/Sites/blockparty/wp-content/plugins/presswell-signal-relay`
-2. `composer install`
-3. `bin/install-wp-tests.sh wordpress_test root '' localhost latest`
+1. `composer install`
+2. `bin/install-wp-tests.sh <db-name> <db-user> '<db-pass>' localhost latest` — use a database only for tests; the suite empties it.
 
-If your shell resolves `TMPDIR` to a non-standard path and the suite cannot locate test libs, run with an explicit path:
+The bootstrap finds the test library in `WP_TESTS_DIR`, then `$TMPDIR/wordpress-tests-lib`, then `/tmp/wordpress-tests-lib`. macOS clears `$TMPDIR` from time to time; if the library goes missing, run the install script again or point `WP_TESTS_DIR` at a lasting copy.
 
-- `WP_TESTS_DIR=/Users/bp/Sites/_labs/blockparty/.tmp-test-env/wordpress-tests-lib composer phpunit`
-
-## Run tests (Composer shortcuts)
-
-- Full suite: `composer phpunit`
-- Single file: `composer phpunit:file -- tests/TrackingServiceTest.php`
-- Single test method: `composer phpunit:filter -- --filter test_get_client_config_uses_fallback_storage_key_when_filter_returns_empty tests/TrackingServiceTest.php`
-
-## Run tests (direct PHPUnit)
+## Run tests
 
 - Full suite: `vendor/bin/phpunit`
-- Single file: `vendor/bin/phpunit tests/SettingsTest.php`
-- Single test method: `vendor/bin/phpunit --filter test_should_show_debug_styles_respects_role_and_setting tests/SettingsTest.php`
+- One file: `vendor/bin/phpunit tests/SettingsTest.php`
+- One test: `vendor/bin/phpunit --filter test_ttl_comes_from_expiry_setting`
 
-## Optional WordPress test groups
+The form plugins aren't loaded. Adapter tests run each adapter's trait in a small harness, with stand-ins for the form plugin classes they touch (`GF_Field`, `rgar()`, `FrmEntryMeta`, `WPCF7_Submission`, ...).
 
-By default, WordPress prints notices that some groups are skipped. You can run them explicitly:
+## Coverage
 
-- AJAX group: `vendor/bin/phpunit --group ajax`
-- Multisite files group: `vendor/bin/phpunit --group ms-files`
-- External HTTP group: `vendor/bin/phpunit --group external-http`
+- `CorePluginIntegrationTest.php`: singleton, hook registration, settings link, and admin styles loading only on the settings screen.
+- `SettingsTest.php`: defaults, sanitizing (attribution model, expiry, consent, Remove Data, custom parameters), the settings fields, and the debug display gate.
+- `TrackingServiceTest.php`: tracking keys and their `first_` copies, attribution model, expiry, filters, client config, and value sanitizing (URLs, percent-encoding, tags, line breaks, length).
+- `AssetsTraitTest.php`: the script loading site-wide while an adapter is active, the opt-out filter, and one config with keys from every adapter.
+- `PrivacyTraitTest.php`: suggested privacy policy text, consent settings in the client config, and WP Consent API registration.
+- `UninstallTest.php`: settings kept by default and removed with Remove Data.
+- `TransceiverMarkupTest.php`: wrapper and input markup, the debug panel, and escaping by content type (URL, HTML, text).
+- `AdapterAssetsTraitTest.php`: the shared adapter helpers in normal and debug mode.
+- `AdapterRegistryTest.php`, `AdapterBootstrapTest.php`: adapter registration and bootstrap.
+- `ContactForm7AdapterTest.php`: hidden inputs, posted data sanitizing, and mail tags.
+- `FluentFormsAdapterTest.php`: response sanitizing, entry display, smartcodes, and email formatting.
+- `FormidableAdapterTest.php`: field registration, submission sanitizing, display, and tokens escaped for URLs and HTML.
+- `ForminatorAdapterTest.php`: hidden inputs, entry values, and placeholders, including HTML emails.
+- `GravityFormsAdapterTest.php`: sanitizing on save, inputs matched by key, the entry list, and merge tags escaped for HTML.
+- `WPFormsAdapterTest.php`: smart tags, including older WPForms versions.
 
-## Test coverage map
-
-- `CorePluginIntegrationTest.php`: singleton bootstrap, core hook registration, settings link wiring, and tracking service accessor checks.
-- `SettingsTest.php`: settings defaults, sanitization, custom parameter normalization, and debug visibility gate behavior.
-- `TrackingServiceTest.php`: tracking-key assembly, TTL/storage filter behavior, and value sanitization (scalar/url/length constraints).
-- `AdapterRegistryTest.php`: adapter registration key normalization, overwrite behavior, and `register_all()` dispatch.
-- `AdapterBootstrapTest.php`: integration bootstrap idempotence and zero-dependency behavior in clean environments.
-- `ContactForm7AdapterTest.php`: hidden input injection, posted value sanitization, mail-tag suggestions, and special mail-tag output.
-- `WPFormsAdapterTest.php`: transceiver field payload sanitization and smart-tag replacement behavior.
-- `GravityFormsAdapterTest.php`: duplicate tracking-field enforcement and submission input sanitization.
-- `ForminatorAdapterTest.php`: hidden-input injection, entry payload append behavior, iterator display enrichment, and placeholder replacement.
-- `FormidableAdapterTest.php`: field registration metadata, submission normalization, display formatting, and token replacement behavior.
-- `FluentFormsAdapterTest.php`: smartcode registration/resolution, tracking-all email token formatting, and submission response normalization.
-
-## Useful notes
-
-- Full suite should pass with `Exit code 0`; if failures mention missing WordPress test libs, rerun `bin/install-wp-tests.sh`.
-- Integration adapters are loaded conditionally and are intentionally not asserted here against third-party plugin classes.
+The browser script (`assets/js/transceiver.js`) has no automated tests; check it with the query strings in `AGENTS.md`.

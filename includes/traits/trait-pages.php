@@ -13,6 +13,7 @@ trait PWTSR_Pages_Trait {
    */
   protected function construct_pages_trait() {
     add_action( 'admin_menu', [ $this, 'register_admin_pages' ] );
+    add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
     add_filter( 'plugin_action_links_' . plugin_basename( Presswell_Tracking_Signal_Relay::PLUGIN_FILE ), [ $this, 'add_settings_action_link' ] );
     add_filter( 'admin_footer_text', [ $this, 'filter_presswell_admin_footer_text' ], 20 );
     add_filter( 'update_footer', [ $this, 'filter_presswell_admin_version_text' ], 20 );
@@ -29,6 +30,20 @@ trait PWTSR_Pages_Trait {
       PWTSR::SETTINGS_PAGE_SLUG,
       [ $this, 'render_settings_page' ]
     );
+  }
+
+  /**
+   * Load the settings page script and styles.
+   *
+   * @param string $hook_suffix Current admin page.
+   */
+  public function enqueue_admin_assets( $hook_suffix ) {
+    if ( PWTSR::SETTINGS_PAGE_SCREEN_ID !== $hook_suffix ) {
+      return;
+    }
+
+    wp_enqueue_style( PWTSR::ASSET_HANDLE_ADMIN_STYLE, $this->get_asset_url( 'css/admin.css' ), [], PWTSR::VERSION );
+    wp_enqueue_script( PWTSR::ASSET_HANDLE_ADMIN_SCRIPT, $this->get_asset_url( 'js/admin.js' ), [], PWTSR::VERSION, true );
   }
 
   /**

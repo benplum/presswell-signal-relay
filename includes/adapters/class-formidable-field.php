@@ -56,108 +56,21 @@ if ( class_exists( 'FrmFieldHidden' ) && ! class_exists( 'PWTSR_Formidable_Field
         return '';
       }
 
-      $inputs = [];
+      $debug_mode = PWTSR_Transceiver_Markup::is_debug_mode();
+
       // Keep Formidable's field key present, but don't place tracking payload in item_meta before spam validation runs.
-      $inputs[] = sprintf(
-        '<input type="hidden" name="item_meta[%1$d]" value="" />',
-        absint( $field_id )
-      );
+      $inputs = sprintf( '<input type="hidden" name="item_meta[%1$d]" value="" />', $field_id );
 
-      foreach ( $this->get_tracking_keys() as $key ) {
-        $inputs[] = $this->render_transceiver_input_markup(
+      foreach ( presswell_tracking_signal_relay()->get_service()->get_tracking_keys( PWTSR::ADAPTER_FORMIDABLE ) as $key ) {
+        $inputs .= PWTSR_Transceiver_Markup::render_input(
           $key,
-          'pwtsr_tracking[' . $field_id . '][' . $key . ']',
-          'presswell-formidable-' . $field_id . '-' . sanitize_html_class( $key )
+          PWTSR::FIELD_NAME . '[' . $field_id . '][' . $key . ']',
+          'pwtsr-formidable-' . $field_id . '-' . sanitize_html_class( $key ),
+          $debug_mode
         );
       }
 
-      if ( empty( $inputs ) ) {
-        return '';
-      }
-
-      return PWTSR_Transceiver_Markup::sanitize_wrapper_markup(
-        PWTSR_Transceiver_Markup::render_wrapper(
-          'presswell-transceiver presswell-formidable-transceiver',
-          PWTSR::ADAPTER_FORMIDABLE,
-          implode( '', $inputs ),
-          $this->is_debug_field_mode()
-        )
-      );
-    }
-
-    /**
-     * Resolve plugin tracking service.
-     *
-     * @return PWTSR_Tracking_Service
-     */
-    private function get_service() {
-      if ( function_exists( 'presswell_tracking_signal_relay' ) ) {
-        $plugin = presswell_tracking_signal_relay();
-        if ( $plugin && method_exists( $plugin, 'get_service' ) ) {
-          $service = $plugin->get_service();
-          if ( $service instanceof PWTSR_Tracking_Service ) {
-            return $service;
-          }
-        }
-      }
-
-      return new PWTSR_Tracking_Service();
-    }
-
-    /**
-     * Resolve tracking keys for Formidable context.
-     *
-     * @return string[]
-     */
-    private function get_tracking_keys() {
-      return $this->get_service()->get_tracking_keys( PWTSR::ADAPTER_FORMIDABLE );
-    }
-
-    /**
-     * Determine whether debug mode is active.
-     *
-     * @return bool
-     */
-    private function is_debug_field_mode() {
-      if ( function_exists( 'presswell_tracking_signal_relay' ) ) {
-        $plugin = presswell_tracking_signal_relay();
-        if ( $plugin && method_exists( $plugin, 'should_show_debug_styles' ) ) {
-          return (bool) $plugin->should_show_debug_styles();
-        }
-      }
-
-      return false;
-    }
-
-    /**
-     * Render per-key transceiver input markup.
-     *
-     * @param string $key   Tracking key.
-     * @param string $name  Input name.
-     * @param string $id    Input id.
-     * @param string $value Input value.
-     *
-     * @return string
-     */
-    private function render_transceiver_input_markup( $key, $name, $id, $value = '' ) {
-      if ( $this->is_debug_field_mode() ) {
-        return sprintf(
-          '<div class="presswell-debug-field-row"><label class="presswell-debug-field-label" for="%1$s">%2$s</label><input type="text" id="%1$s" name="%3$s" value="%4$s" readonly="readonly" data-presswell-transceiver="%5$s" /></div>',
-          esc_attr( $id ),
-          esc_html( $key ),
-          esc_attr( $name ),
-          esc_attr( $value ),
-          esc_attr( $key )
-        );
-      }
-
-      return sprintf(
-        '<input type="hidden" id="%1$s" name="%2$s" value="%3$s" data-presswell-transceiver="%4$s" />',
-        esc_attr( $id ),
-        esc_attr( $name ),
-        esc_attr( $value ),
-        esc_attr( $key )
-      );
+      return PWTSR_Transceiver_Markup::render( PWTSR::ADAPTER_FORMIDABLE, $inputs, $debug_mode );
     }
   }
 }

@@ -10,25 +10,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 trait PWTSR_Gravity_Forms_Trait {
 
   /**
-   * Initialize Gravity Forms hooks when available.
+   * Whether inline visibility styles were enqueued.
+   *
+   * @var bool
    */
-  public function maybe_bootstrap_gravity_forms() {
-    if ( ! class_exists( 'GFForms' ) ) {
-      return;
-    }
+  private $styles_enqueued = false;
 
+  /**
+   * Register Gravity Forms hooks. The bootstrap only loads this adapter when Gravity Forms is active.
+   */
+  protected function construct_gravity_forms_trait() {
     GF_Fields::register( new PWTSR_Gravity_Forms_Field() );
 
     add_action( 'gform_editor_js_set_default_values', [ $this, 'output_editor_defaults_js' ] );
     add_action( 'admin_enqueue_scripts', [ $this, 'maybe_enqueue_editor_guard_script' ] );
-    add_action( 'gform_enqueue_scripts', [ $this, 'maybe_enqueue_assets' ], 10, 2 );
-    add_filter( 'gform_pre_form_editor_save', [ $this, 'enforce_single_tracking_field' ] );
+    add_action( 'gform_enqueue_scripts', [ $this, 'maybe_enqueue_assets' ] );
     add_filter( 'gform_pre_render', [ $this, 'enforce_single_tracking_field' ], 5 );
     add_filter( 'gform_pre_validation', [ $this, 'enforce_single_tracking_field' ], 5 );
     add_filter( 'gform_pre_submission_filter', [ $this, 'enforce_single_tracking_field' ], 5 );
-    add_filter( 'gform_pre_submission_filter', [ $this, 'sanitize_tracking_submission_values' ], 10 );
     add_filter( 'gform_admin_pre_render', [ $this, 'enforce_single_tracking_field' ], 5 );
-    add_filter( 'gform_custom_merge_tags', [ $this, 'register_tracking_merge_tags' ], 10, 4 );
+    add_filter( 'gform_custom_merge_tags', [ $this, 'register_tracking_merge_tags' ] );
     add_filter( 'gform_replace_merge_tags', [ $this, 'replace_tracking_merge_tags' ], 10, 7 );
   }
 
@@ -36,15 +37,16 @@ trait PWTSR_Gravity_Forms_Trait {
    * Output default settings for the field within the form editor.
    */
   public function output_editor_defaults_js() {
-    $keys = $this->service->get_tracking_keys( 'gravityforms' );
+    $keys     = $this->service->get_tracking_keys( PWTSR::ADAPTER_GRAVITY_FORMS );
+    $suffixes = PWTSR_Gravity_Forms_Field::get_input_suffixes( count( $keys ) );
     ?>
-    case 'presswell_transceiver':
+    case '<?php echo esc_js( PWTSR::FIELD_TYPE ); ?>':
       field.label = '<?php echo esc_js( __( 'Tracking', 'presswell-signal-relay' ) ); ?>';
       field.labelPlacement = 'hidden_label';
       field.description = '<?php echo esc_js( __( 'Captures UTM and click attribution parameters for the current visitor.', 'presswell-signal-relay' ) ); ?>';
       field.inputs = [];
       <?php foreach ( $keys as $index => $key ) : ?>
-      field.inputs.push( new Input( field.id + '.<?php echo esc_js( $index + 1 ); ?>', '<?php echo esc_js( $key ); ?>', '<?php echo esc_js( $key ); ?>' ) );
+      field.inputs.push( Object.assign( new Input( field.id + '.<?php echo esc_js( $suffixes[ $index ] ); ?>', '<?php echo esc_js( $key ); ?>' ), { name: '<?php echo esc_js( $key ); ?>' } ) );
       <?php endforeach; ?>
     break;
     <?php
@@ -55,12 +57,12 @@ trait PWTSR_Gravity_Forms_Trait {
    *
    * @param array $form Gravity Forms form array.
    */
-  public function maybe_enqueue_assets( $form, $is_ajax = false ) {
+  public function maybe_enqueue_assets( $form ) {
     if ( ! $this->form_contains_tracking_field( $form ) ) {
       return;
     }
 
-    $this->enqueue_tracking_script( PWTSR::ADAPTER_GRAVITY_FORMS );
+    $this->enqueue_tracking_script();
     $this->enqueue_visibility_styles();
   }
 
@@ -72,15 +74,7 @@ trait PWTSR_Gravity_Forms_Trait {
       return;
     }
 
-    $debug_mode = false;
-    if ( function_exists( 'presswell_tracking_signal_relay' ) ) {
-      $plugin = presswell_tracking_signal_relay();
-      if ( $plugin && method_exists( $plugin, 'should_show_debug_styles' ) ) {
-        $debug_mode = $plugin->should_show_debug_styles();
-      }
-    }
-
-    if ( $debug_mode ) {
+    if ( $this->is_debug_field_mode() ) {
       $this->styles_enqueued = true;
       return;
     }
@@ -153,70 +147,6 @@ trait PWTSR_Gravity_Forms_Trait {
   }
 
   /**
-   * Sanitize posted tracking values before entry save.
-   *
-   * @param array $form Current Gravity Forms form array.
-   *
-   * @return array
-   */
-  public function sanitize_tracking_submission_values( $form ) {
-    // phpcs:disable WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce is validated before request data is consumed.
-    if ( empty( $form['fields'] ) || ! is_array( $form['fields'] ) || empty( $_POST ) || ! is_array( $_POST ) ) {
-      return $form;
-    }
-
-    $form_id = isset( $form['id'] ) ? absint( $form['id'] ) : 0;
-    if ( ! $form_id ) {
-      return $form;
-    }
-
-    $nonce_key = '_gform_submit_nonce_' . $form_id;
-    if ( ! isset( $_POST[ $nonce_key ] ) || is_array( $_POST[ $nonce_key ] ) ) {
-      return $form;
-    }
-
-    $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) );
-    if ( '' === $nonce || ! wp_verify_nonce( $nonce, 'gform_submit_' . $form_id ) ) {
-      return $form;
-    }
-
-    foreach ( $form['fields'] as $field ) {
-      $field_type = $this->extract_field_type( $field );
-      if ( PWTSR::FIELD_TYPE !== $field_type ) {
-        continue;
-      }
-
-      $field_id = $this->extract_field_id( $field );
-      if ( ! $field_id ) {
-        continue;
-      }
-
-      $index = 1;
-      foreach ( $this->service->get_tracking_keys( 'gravityforms' ) as $key ) {
-        $posted_key = sprintf( 'input_%d_%d', $field_id, $index );
-        if ( ! isset( $_POST[ $posted_key ] ) ) {
-          $index++;
-          continue;
-        }
-
-        $raw = wp_unslash( $_POST[ $posted_key ] );
-        if ( is_array( $raw ) ) {
-          unset( $_POST[ $posted_key ] );
-          $index++;
-          continue;
-        }
-
-        $_POST[ $posted_key ] = $this->service->sanitize_tracking_value( $key, $raw );
-        $index++;
-      }
-    }
-
-    // phpcs:enable WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-
-    return $form;
-  }
-
-  /**
    * Enqueue editor guard script on Gravity Forms form editor screens.
    */
   public function maybe_enqueue_editor_guard_script() {
@@ -251,6 +181,7 @@ trait PWTSR_Gravity_Forms_Trait {
     $config = wp_json_encode(
       [
         'fieldType' => PWTSR::FIELD_TYPE,
+        'title'     => __( 'Tracking', 'presswell-signal-relay' ),
         'warning'   => __( 'Only one Tracking field can be added per form.', 'presswell-signal-relay' ),
       ]
     );
@@ -258,7 +189,7 @@ trait PWTSR_Gravity_Forms_Trait {
     if ( is_string( $config ) && '' !== $config ) {
       wp_add_inline_script(
         PWTSR::ASSET_HANDLE_GRAVITY_EDITOR_SCRIPT,
-        "window.presswellSignalRelayGravityEditor={$config};",
+        'window.' . PWTSR::JS_OBJECT_GRAVITY_EDITOR . '=' . $config . ';',
         'before'
       );
     }
@@ -284,32 +215,13 @@ trait PWTSR_Gravity_Forms_Trait {
   }
 
   /**
-   * Extract numeric field id from object or array field definitions.
-   *
-   * @param mixed $field Gravity Forms field.
-   *
-   * @return int
-   */
-  private function extract_field_id( $field ) {
-    if ( is_object( $field ) && isset( $field->id ) ) {
-      return absint( $field->id );
-    }
-
-    if ( is_array( $field ) && isset( $field['id'] ) ) {
-      return absint( $field['id'] );
-    }
-
-    return 0;
-  }
-
-  /**
    * Register custom merge tags for tracking values.
    *
    * @param array $merge_tags Existing merge tags.
    *
    * @return array
    */
-  public function register_tracking_merge_tags( $merge_tags, $form_id, $fields, $element_id ) {
+  public function register_tracking_merge_tags( $merge_tags ) {
     if ( ! is_array( $merge_tags ) ) {
       $merge_tags = [];
     }
@@ -319,7 +231,7 @@ trait PWTSR_Gravity_Forms_Trait {
       'tag'   => '{tracking:all}',
     ];
 
-    foreach ( $this->service->get_tracking_keys( 'gravityforms' ) as $key ) {
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_GRAVITY_FORMS ) as $key ) {
       $merge_tags[] = [
         /* translators: %s: Tracking key name. */
         'label' => sprintf( __( 'Tracking: %s', 'presswell-signal-relay' ), $key ),
@@ -336,7 +248,6 @@ trait PWTSR_Gravity_Forms_Trait {
    * Supported tags:
    * - {tracking:all}
    * - {tracking:key_name}
-   * - {tracking_values}
    *
    * @param string $text       Text with merge tags.
    * @param array  $form       Current form array.
@@ -411,24 +322,15 @@ trait PWTSR_Gravity_Forms_Trait {
       return [];
     }
 
-    $field_id = $this->extract_field_id( $tracking_field );
-    if ( ! $field_id ) {
+    if ( is_array( $tracking_field ) && class_exists( 'GF_Fields' ) ) {
+      $tracking_field = GF_Fields::create( $tracking_field );
+    }
+
+    if ( ! $tracking_field instanceof PWTSR_Gravity_Forms_Field ) {
       return [];
     }
 
-    $pairs = [];
-    $index = 1;
-    foreach ( $this->service->get_tracking_keys( 'gravityforms' ) as $key ) {
-      $input_id = sprintf( '%d.%d', $field_id, $index );
-      $value    = rgar( $entry, $input_id );
-      $clean    = $this->service->sanitize_tracking_value( $key, $value );
-      if ( '' !== $clean ) {
-        $pairs[ $key ] = $clean;
-      }
-      $index++;
-    }
-
-    return $pairs;
+    return $tracking_field->get_entry_tracking_pairs( $entry );
   }
 
   /**
@@ -449,7 +351,9 @@ trait PWTSR_Gravity_Forms_Trait {
       $value = rawurlencode( $value );
     }
 
-    if ( $esc_html ) {
+    // Gravity Forms escapes its own field merge tags for HTML output whenever the format is
+    // html, even when $esc_html is false (as in HTML notifications), so match that.
+    if ( $esc_html || 'html' === $format ) {
       $value = esc_html( $value );
     }
 

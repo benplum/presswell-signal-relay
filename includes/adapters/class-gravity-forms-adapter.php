@@ -5,61 +5,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Gravity Forms adapter for Presswell Tracking Signal Relay.
- * Capture method: custom field type (Presswell Tracking field).
+ * Gravity Forms adapter. Capture method: custom Tracking field.
  */
-class PWTSR_Gravity_Forms_Adapter implements PWTSR_Form_Adapter_Interface {
-  use PWTSR_Adapter_Assets_Trait;
+class PWTSR_Gravity_Forms_Adapter extends PWTSR_Form_Adapter {
   use PWTSR_Gravity_Forms_Trait;
 
-  /**
-   * Shared tracking service instance.
-   *
-   * @var PWTSR_Tracking_Service
-   */
-  private $service;
+  const KEY = PWTSR::ADAPTER_GRAVITY_FORMS;
 
   /**
-   * Whether assets are registered for this request.
-   *
-   * @var bool
-   */
-  private $assets_registered = false;
-
-  /**
-   * Tracks localized JS objects to avoid duplicate calls.
-   *
-   * @var array
-   */
-  private $localized_objects = [];
-
-  /**
-   * Whether inline visibility styles were enqueued.
-   *
-   * @var bool
-   */
-  private $styles_enqueued = false;
-
-  /**
-   * @param PWTSR_Tracking_Service $service Shared tracking service.
-   */
-  public function __construct( PWTSR_Tracking_Service $service ) {
-    $this->service = $service;
-  }
-
-  /**
-   * Return adapter key.
-   *
-   * @return string
-   */
-  public function key() {
-    return PWTSR::ADAPTER_GRAVITY_FORMS;
-  }
-
-  /**
-   * Register adapter boot hooks.
+   * Register Gravity Forms hooks.
    */
   public function register() {
-    $this->maybe_bootstrap_gravity_forms();
+    $this->construct_gravity_forms_trait();
   }
 }

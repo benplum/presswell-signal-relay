@@ -1,0 +1,49 @@
+/* Every plugin screen shares one width. */
+
+.wrap.pwtsr-settings {
+  max-width: 1000px;
+}
+
+/* Button group: radios shown as joined buttons, as in Content Extractor. */
+
+.pwtsr-button-group {
+  display: inline-flex;
+  gap: 0;
+  margin: 0 0 6px;
+}
+
+.pwtsr-button-group-option {
+  position: relative;
+  margin: 0;
+}
+
+.pwtsr-button-group-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pwtsr-button-group-option .button {
+  border-radius: 0;
+  margin-left: -1px;
+  min-width: 92px;
+  text-align: center;
+}
+
+.pwtsr-button-group-option:first-child .button {
+  margin-left: 0;
+}
+
+.pwtsr-button-group-option input[type="radio"]:checked + .button {
+  background: var(--wp-admin-theme-color, #2271b1);
+  border-color: var(--wp-admin-theme-color-darker-10, #135e96);
+  color: #fff;
+}
+
+.pwtsr-button-group-option input[type="radio"]:focus-visible + .button {
+  box-shadow: 0 0 0 1px #fff, 0 0 0 3px var(--wp-admin-theme-color, #2271b1);
+}
+
+#pwtsr-expiry-unit {
+  vertical-align: unset;
+}

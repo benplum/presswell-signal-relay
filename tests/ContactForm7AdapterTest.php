@@ -35,11 +35,6 @@ class PWTSR_Test_CF7_Adapter_Harness {
   /** @var PWTSR_Tracking_Service */
   public $service;
 
-  /** @var bool */
-  private $assets_registered = false;
-
-  /** @var array */
-  private $localized_objects = [];
 
   public function __construct( PWTSR_Tracking_Service $service ) {
     $this->service = $service;
@@ -93,7 +88,7 @@ class ContactForm7AdapterTest extends WP_UnitTestCase {
     $first = $this->adapter->inject_contact_form_7_tracking_inputs( $html );
     $second = $this->adapter->inject_contact_form_7_tracking_inputs( $first );
 
-    $this->assertStringContainsString( 'data-presswell-transceiver-adapter="cf7"', $first );
+    $this->assertStringContainsString( 'data-pwtsr-transceiver-adapter="contactform7"', $first );
     $this->assertStringContainsString( 'name="utm_source"', $first );
     $this->assertSame( $first, $second );
   }
@@ -136,5 +131,18 @@ class ContactForm7AdapterTest extends WP_UnitTestCase {
     $this->assertSame( 'google', $single );
     $this->assertStringContainsString( 'utm_source: google', $all );
     $this->assertStringContainsString( 'utm_campaign: spring_launch', $all );
+  }
+
+  public function test_render_special_mail_tags_resolves_to_empty_without_tracking_data() {
+    $this->set_submission_instance( new WPCF7_Submission( [ 'your-name' => 'Ada' ] ) );
+
+    $this->assertSame( '', $this->adapter->render_contact_form_7_special_mail_tags( null, 'tracking-all', false, null ) );
+    $this->assertSame( '', $this->adapter->render_contact_form_7_special_mail_tags( null, 'tracking-utm_source', true, null ) );
+  }
+
+  public function test_render_special_mail_tags_leaves_other_tags_alone() {
+    $this->set_submission_instance( new WPCF7_Submission( [ 'utm_source' => 'google' ] ) );
+
+    $this->assertNull( $this->adapter->render_contact_form_7_special_mail_tags( null, '_site_title', false, null ) );
   }
 }

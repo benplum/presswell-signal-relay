@@ -36,11 +36,6 @@ class PWTSR_Test_Forminator_Adapter_Harness {
   /** @var PWTSR_Tracking_Service */
   public $service;
 
-  /** @var bool */
-  private $assets_registered = false;
-
-  /** @var array */
-  private $localized_objects = [];
 
   public function __construct( PWTSR_Tracking_Service $service ) {
     $this->service = $service;
@@ -70,7 +65,7 @@ class ForminatorAdapterTest extends WP_UnitTestCase {
     $first = $this->adapter->inject_hidden_tracking_inputs( $html );
     $second = $this->adapter->inject_hidden_tracking_inputs( $first );
 
-    $this->assertStringContainsString( 'data-presswell-transceiver-adapter="forminator"', $first );
+    $this->assertStringContainsString( 'data-pwtsr-transceiver-adapter="forminator"', $first );
     $this->assertStringContainsString( 'name="utm_source"', $first );
     $this->assertSame( $first, $second );
   }
@@ -154,5 +149,15 @@ class ForminatorAdapterTest extends WP_UnitTestCase {
     $this->assertStringContainsString( 'Medium: cpc', $result );
     $this->assertStringContainsString( 'utm_source: prepared-source', $result );
     $this->assertStringContainsString( 'utm_medium: cpc', $result );
+  }
+
+  public function test_tracking_all_uses_line_breaks_and_escaping_in_html_content() {
+    $prepared = [ 'utm_source' => 'google', 'utm_campaign' => 'a & b' ];
+
+    $html = $this->adapter->replace_forminator_tracking_placeholders( '<p>{tracking_all}</p>', null, $prepared, null, [], [] );
+    $text = $this->adapter->replace_forminator_tracking_placeholders( '{tracking_all}', null, $prepared, null, [], [] );
+
+    $this->assertSame( '<p>utm_source: google<br />utm_campaign: a &amp; b</p>', $html );
+    $this->assertSame( "utm_source: google\nutm_campaign: a & b", $text );
   }
 }

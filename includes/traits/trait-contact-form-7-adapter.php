@@ -10,13 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 trait PWTSR_Contact_Form_7_Trait {
 
   /**
-   * Initialize Contact Form 7 hooks when available.
+   * Register Contact Form 7 hooks. The bootstrap only loads this adapter when Contact Form 7 is active.
    */
-  public function maybe_bootstrap_contact_form_7() {
-    if ( ! defined( 'WPCF7_VERSION' ) && ! function_exists( 'wpcf7' ) ) {
-      return;
-    }
-
+  protected function construct_contact_form_7_trait() {
     add_action( 'wpcf7_enqueue_scripts', [ $this, 'maybe_enqueue_contact_form_7_assets' ] );
     add_filter( 'wpcf7_form_elements', [ $this, 'inject_contact_form_7_tracking_inputs' ], 20, 1 );
     add_filter( 'wpcf7_posted_data', [ $this, 'sanitize_contact_form_7_posted_data' ], 20, 1 );
@@ -28,7 +24,7 @@ trait PWTSR_Contact_Form_7_Trait {
    * Enqueue front-end tracking script for Contact Form 7 forms.
    */
   public function maybe_enqueue_contact_form_7_assets() {
-    $this->enqueue_tracking_script( PWTSR::ADAPTER_CONTACT_FORM_7 );
+    $this->enqueue_tracking_script();
   }
 
   /**
@@ -39,7 +35,7 @@ trait PWTSR_Contact_Form_7_Trait {
    * @return string
    */
   public function inject_contact_form_7_tracking_inputs( $html ) {
-    if ( false !== strpos( $html, 'data-presswell-transceiver-adapter="cf7"' ) ) {
+    if ( false !== strpos( $html, 'data-pwtsr-transceiver-adapter="' . PWTSR::ADAPTER_CONTACT_FORM_7 . '"' ) ) {
       return $html;
     }
 
@@ -48,7 +44,7 @@ trait PWTSR_Contact_Form_7_Trait {
       $inputs[] = $this->render_transceiver_input_markup(
         $key,
         $key,
-        'presswell-cf7-' . sanitize_html_class( $key )
+        'pwtsr-cf7-' . sanitize_html_class( $key )
       );
     }
 
@@ -56,7 +52,7 @@ trait PWTSR_Contact_Form_7_Trait {
       return $html;
     }
 
-    $wrapper = $this->wrap_transceiver_inputs_markup( 'cf7', implode( '', $inputs ) );
+    $wrapper = $this->wrap_transceiver_inputs_markup( PWTSR::ADAPTER_CONTACT_FORM_7, implode( '', $inputs ) );
 
     return $html . $wrapper;
   }
@@ -74,7 +70,13 @@ trait PWTSR_Contact_Form_7_Trait {
     }
 
     foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_CONTACT_FORM_7 ) as $key ) {
-      if ( ! isset( $posted_data[ $key ] ) || is_array( $posted_data[ $key ] ) ) {
+      if ( ! array_key_exists( $key, $posted_data ) ) {
+        continue;
+      }
+
+      // Tracking values are always single strings; drop anything else rather than keep it unsanitized.
+      if ( ! is_scalar( $posted_data[ $key ] ) ) {
+        unset( $posted_data[ $key ] );
         continue;
       }
 
@@ -110,9 +112,7 @@ trait PWTSR_Contact_Form_7_Trait {
    *
    * Supported tags:
    * - [tracking-all]
-   * - [tracking-values]
    * - [tracking-{key}]
-   * - [pwsr_transceiver]
    *
    * @param string $output Existing output.
    * @param string $name   Special mail tag name.
@@ -122,17 +122,27 @@ trait PWTSR_Contact_Form_7_Trait {
    * @return string
    */
   public function render_contact_form_7_special_mail_tags( $output, $name, $html, $mail_tag = null ) {
-    $pairs = $this->get_contact_form_7_tracking_pairs();
-    if ( empty( $pairs ) ) {
+    if ( ! $this->is_contact_form_7_tracking_tag( (string) $name ) ) {
       return $output;
     }
 
-    $resolved = $this->resolve_contact_form_7_tracking_tag_value( (string) $name, $pairs, (bool) $html );
-    if ( null === $resolved ) {
-      return $output;
-    }
+    // Always resolve our own tags, even to an empty string; returning null makes CF7 print the raw tag.
+    $resolved = $this->resolve_contact_form_7_tracking_tag_value( (string) $name, $this->get_contact_form_7_tracking_pairs(), (bool) $html );
 
-    return $resolved;
+    return null === $resolved ? '' : $resolved;
+  }
+
+  /**
+   * Whether a special mail tag name belongs to this plugin.
+   *
+   * @param string $name Special mail tag name.
+   *
+   * @return bool
+   */
+  private function is_contact_form_7_tracking_tag( $name ) {
+    $normalized = strtolower( trim( $name ) );
+
+    return 0 === strpos( $normalized, 'tracking-' );
   }
 
   /**
@@ -210,7 +220,7 @@ trait PWTSR_Contact_Form_7_Trait {
   private function resolve_contact_form_7_tracking_tag_value( $name, $pairs, $html ) {
     $normalized = strtolower( trim( (string) $name ) );
 
-    if ( in_array( $normalized, [ 'tracking-all', 'tracking-values', 'pwsr_transceiver' ], true ) ) {
+    if ( 'tracking-all' === $normalized ) {
       return $this->format_contact_form_7_tracking_pairs( $pairs, $html );
     }
 

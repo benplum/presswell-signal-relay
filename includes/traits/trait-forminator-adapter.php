@@ -10,17 +10,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 trait PWTSR_Forminator_Trait {
 
   /**
-   * Initialize Forminator hooks when available.
+   * Register Forminator hooks. The bootstrap only loads this adapter when Forminator is active.
    */
-  public function maybe_bootstrap_forminator() {
-    if ( ! defined( 'FORMINATOR_VERSION' ) && ! function_exists( 'forminator_custom_forms' ) ) {
-      return;
-    }
-
+  protected function construct_forminator_trait() {
     add_action( 'forminator_custom_forms_enqueue_scripts', [ $this, 'maybe_enqueue_forminator_assets' ] );
     add_filter( 'forminator_data', [ $this, 'register_forminator_tracking_editor_variables' ], 20 );
-    add_filter( 'forminator_render_form_markup', [ $this, 'inject_hidden_tracking_inputs' ], 20, 6 );
-    add_filter( 'forminator_custom_form_submit_field_data', [ $this, 'append_tracking_to_entry' ], 20, 2 );
+    add_filter( 'forminator_render_form_markup', [ $this, 'inject_hidden_tracking_inputs' ], 20 );
+    add_filter( 'forminator_custom_form_submit_field_data', [ $this, 'append_tracking_to_entry' ], 20 );
     add_filter( 'forminator_custom_form_entries_iterator', [ $this, 'append_tracking_to_entries_iterator' ], 20, 2 );
     add_filter( 'forminator_replace_custom_form_data', [ $this, 'replace_forminator_tracking_placeholders' ], 20, 6 );
   }
@@ -29,7 +25,7 @@ trait PWTSR_Forminator_Trait {
    * Enqueue front-end tracking script for Forminator forms.
    */
   public function maybe_enqueue_forminator_assets() {
-    $this->enqueue_tracking_script( PWTSR::ADAPTER_FORMINATOR );
+    $this->enqueue_tracking_script();
   }
 
   /**
@@ -62,7 +58,7 @@ trait PWTSR_Forminator_Trait {
    *
    * @return string
    */
-  public function inject_hidden_tracking_inputs( $html, $form_fields = [], $form_type = '', $form_settings = [], $form_design = [], $render_id = '' ) {
+  public function inject_hidden_tracking_inputs( $html ) {
     if ( $this->is_forminator_admin_editor_context() ) {
       return $html;
     }
@@ -71,16 +67,16 @@ trait PWTSR_Forminator_Trait {
       return $html;
     }
 
-    if ( false !== strpos( $html, 'data-presswell-transceiver-adapter="forminator"' ) ) {
+    if ( false !== strpos( $html, 'data-pwtsr-transceiver-adapter="forminator"' ) ) {
       return $html;
     }
 
     $inputs = [];
-    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMINATOR ) as $key ) {
       $inputs[] = $this->render_transceiver_input_markup(
         $key,
         $key,
-        'presswell-forminator-' . sanitize_html_class( $key )
+        'pwtsr-forminator-' . sanitize_html_class( $key )
       );
     }
 
@@ -88,7 +84,7 @@ trait PWTSR_Forminator_Trait {
       return $html;
     }
 
-    $wrapper = $this->wrap_transceiver_inputs_markup( 'forminator', implode( '', $inputs ) );
+    $wrapper = $this->wrap_transceiver_inputs_markup( PWTSR::ADAPTER_FORMINATOR, implode( '', $inputs ) );
 
     return preg_replace( '/<\/form>/i', $wrapper . '</form>', $html, 1 );
   }
@@ -100,7 +96,7 @@ trait PWTSR_Forminator_Trait {
    *
    * @return array
    */
-  public function append_tracking_to_entry( $field_data_array, $form_id = 0 ) {
+  public function append_tracking_to_entry( $field_data_array ) {
     if ( ! is_array( $field_data_array ) ) {
       $field_data_array = [];
     }
@@ -119,7 +115,7 @@ trait PWTSR_Forminator_Trait {
       $name_index[ (string) $row['name'] ] = $index;
     }
 
-    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMINATOR ) as $key ) {
       $value = isset( $posted_values[ $key ] ) ? $this->service->sanitize_tracking_value( $key, $posted_values[ $key ] ) : '';
       if ( '' === $value ) {
         continue;
@@ -228,7 +224,7 @@ trait PWTSR_Forminator_Trait {
       }
     }
 
-    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMINATOR ) as $key ) {
       $raw = null;
 
       // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce is verified above before request data is consumed.
@@ -258,7 +254,7 @@ trait PWTSR_Forminator_Trait {
   private function get_entry_tracking_values( $entry ) {
     $pairs = [];
 
-    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMINATOR ) as $key ) {
       $value = '';
 
       if ( is_object( $entry ) && method_exists( $entry, 'get_meta' ) ) {
@@ -287,7 +283,6 @@ trait PWTSR_Forminator_Trait {
    *
    * Supported placeholders:
    * - {tracking_all}
-   * - {tracking_values}
    * - {tracking_<key>} e.g. {tracking_utm_source}
    *
    * @param string $content       Content with placeholders.
@@ -306,18 +301,15 @@ trait PWTSR_Forminator_Trait {
 
     $pairs = $this->get_forminator_tracking_pairs_for_placeholders( $prepared_data, $entry );
 
-    $all_lines = [];
-    foreach ( $pairs as $key => $value ) {
-      $all_lines[] = $key . ': ' . $value;
-    }
-    $all_value = implode( "\n", $all_lines );
+    // HTML emails and messages get <br /> between lines and escaped values. URL placeholders
+    // are encoded by forminator_replace_placeholder_in_urls(), so plain text stays raw.
+    $context = 'html' === PWTSR_Transceiver_Markup::get_content_context( $content ) ? 'html' : 'text';
 
-    $content = $this->replace_forminator_placeholder( $content, '{tracking_all}', $all_value );
-    $content = $this->replace_forminator_placeholder( $content, '{tracking_values}', $all_value );
+    $content = $this->replace_forminator_placeholder( $content, '{tracking_all}', PWTSR_Transceiver_Markup::format_all_values( $pairs, $context ) );
 
-    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMINATOR ) as $key ) {
       $placeholder = '{tracking_' . $key . '}';
-      $value       = isset( $pairs[ $key ] ) ? $pairs[ $key ] : '';
+      $value       = isset( $pairs[ $key ] ) ? PWTSR_Transceiver_Markup::escape_for_context( $pairs[ $key ], $context ) : '';
       $content     = $this->replace_forminator_placeholder( $content, $placeholder, $value );
     }
 
@@ -341,7 +333,7 @@ trait PWTSR_Forminator_Trait {
 
     $entry_pairs = $this->get_entry_tracking_values( $entry );
 
-    foreach ( $this->service->get_tracking_keys( 'forminator' ) as $key ) {
+    foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMINATOR ) as $key ) {
       $value = '';
 
       if ( isset( $prepared_data[ $key ] ) && ! is_array( $prepared_data[ $key ] ) ) {

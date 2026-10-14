@@ -4,6 +4,7 @@
  * Description: Capture UTM and click attribution parameters across a visitor session for supported form plugins.
  * Author: Presswell
  * Version: 1.0.0
+ * Requires PHP: 7.4
  * Plugin URI: https://wordpress.org/plugins/presswell-signal-relay
  * Author URI: https://presswell.co
  * License: GPLv2 or later
@@ -22,10 +23,14 @@ require_once __DIR__ . '/includes/helpers/class-constants.php';
 require_once __DIR__ . '/includes/helpers/class-transceiver-markup.php';
 require_once __DIR__ . '/includes/services/class-tracking-service.php';
 require_once __DIR__ . '/includes/adapters/interface-form-adapter.php';
+require_once __DIR__ . '/includes/traits/trait-adapter-assets.php';
+require_once __DIR__ . '/includes/adapters/abstract-form-adapter.php';
 require_once __DIR__ . '/includes/adapters/class-adapter-registry.php';
 require_once __DIR__ . '/includes/traits/trait-adapter-bootstrap.php';
 require_once __DIR__ . '/includes/traits/trait-service-access.php';
 require_once __DIR__ . '/includes/traits/trait-helpers.php';
+require_once __DIR__ . '/includes/traits/trait-assets.php';
+require_once __DIR__ . '/includes/traits/trait-privacy.php';
 require_once __DIR__ . '/includes/traits/trait-settings.php';
 require_once __DIR__ . '/includes/traits/trait-pages.php';
 
@@ -36,9 +41,11 @@ if ( ! class_exists( 'Presswell_Tracking_Signal_Relay' ) ) {
   final class Presswell_Tracking_Signal_Relay {
     use PWTSR_Adapter_Bootstrap_Trait;
     use PWTSR_Service_Access_Trait;
-    use Presswell_Tracking_Signal_Relay_Helpers_Trait;
+    use PWTSR_Helpers_Trait;
     use PWTSR_Settings_Trait;
     use PWTSR_Pages_Trait;
+    use PWTSR_Assets_Trait;
+    use PWTSR_Privacy_Trait;
 
     const PLUGIN_FILE = __FILE__;
 
@@ -49,10 +56,14 @@ if ( ! class_exists( 'Presswell_Tracking_Signal_Relay' ) ) {
      */
     private static $instance = null;
 
-    /** Build core dependencies and defer integration bootstrap. */
+    /**
+     * Wire up each feature area; form adapters load later, on init.
+     */
     protected function __construct() {
       $this->construct_settings_trait();
       $this->construct_pages_trait();
+      $this->construct_assets_trait();
+      $this->construct_privacy_trait();
       $this->construct_adapter_bootstrap_trait();
     }
 

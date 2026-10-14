@@ -120,25 +120,62 @@ class FluentFormsAdapterTest extends WP_UnitTestCase {
     $this->assertStringContainsString( 'utm_source: google | utm_medium: cpc', $formatted );
   }
 
-  public function test_normalize_submission_payload_moves_top_level_tracking_keys() {
-    $submission = (object) [
-      'response' => wp_json_encode(
-        [
-          'utm_source' => 'newsletter',
-          'utm_medium' => 'email',
-        ]
-      ),
-      'user_inputs' => [],
+  public function test_render_response_formats_stored_object_as_html_list() {
+    $stored = json_decode( wp_json_encode( [ 'utm_source' => 'google', 'first_utm_source' => 'newsletter', 'injected' => 'x' ] ) );
+
+    $html = $this->adapter->render_fluent_forms_tracking_response( $stored, [], 3, true );
+
+    $this->assertStringContainsString( '<li><strong>utm_source:</strong> google</li>', $html );
+    $this->assertStringContainsString( '<li><strong>first_utm_source:</strong> newsletter</li>', $html );
+    $this->assertStringNotContainsString( 'injected', $html );
+  }
+
+  public function test_render_response_formats_plain_text_and_escapes_html() {
+    $stored = (object) [ 'utm_source' => 'google', 'utm_medium' => 'cpc' ];
+
+    $this->assertSame( 'utm_source: google, utm_medium: cpc', $this->adapter->render_fluent_forms_tracking_response( $stored, [], 3, false ) );
+
+    $html = $this->adapter->render_fluent_forms_tracking_response( (object) [ 'utm_campaign' => 'a & b' ], [], 3, true );
+    $this->assertStringContainsString( 'a &amp; b', $html );
+  }
+
+  public function test_render_response_is_empty_without_values() {
+    $this->assertSame( '', $this->adapter->render_fluent_forms_tracking_response( (object) [], [], 3, true ) );
+    $this->assertSame( '', $this->adapter->render_fluent_forms_tracking_response( '', [], 3, true ) );
+  }
+
+  public function test_response_filter_whitelists_keys_and_sanitizes_values() {
+    $form_data = [
+      'email'          => 'a@example.com',
+      'pwtsr_tracking' => [
+        'utm_source' => '<script>x</script>Google',
+        'referrer'   => 'https://example.com/?q=red%20shoes',
+        'utm_term'   => [ 'bad' ],
+        'injected'   => 'not a tracking key',
+      ],
     ];
 
-    $normalized = $this->adapter->normalize_fluent_forms_submission_tracking_payload( $submission, 0 );
-    $decoded = json_decode( $normalized->response, true );
+    $result = $this->adapter->sanitize_fluent_forms_tracking_response( $form_data, 3, [] );
 
-    $this->assertArrayHasKey( 'pwtsr_tracking', $decoded );
-    $this->assertSame( 'newsletter', $decoded['pwtsr_tracking']['utm_source'] );
-    $this->assertSame( 'email', $decoded['pwtsr_tracking']['utm_medium'] );
-    $this->assertArrayNotHasKey( 'utm_source', $decoded );
-    $this->assertArrayNotHasKey( 'utm_medium', $decoded );
-    $this->assertStringContainsString( 'Utm Source: newsletter', $normalized->user_inputs['pwtsr_tracking'] );
+    $this->assertSame( 'a@example.com', $result['email'] );
+    $this->assertSame(
+      [
+        'utm_source' => 'Google',
+        'referrer'   => 'https://example.com/?q=red%20shoes',
+      ],
+      $result['pwtsr_tracking']
+    );
+  }
+
+  public function test_response_filter_replaces_non_array_payload() {
+    $result = $this->adapter->sanitize_fluent_forms_tracking_response( [ 'pwtsr_tracking' => '<b>x</b>' ], 3, [] );
+
+    $this->assertSame( [], $result['pwtsr_tracking'] );
+  }
+
+  public function test_response_filter_ignores_forms_without_tracking() {
+    $form_data = [ 'email' => 'a@example.com' ];
+
+    $this->assertSame( $form_data, $this->adapter->sanitize_fluent_forms_tracking_response( $form_data, 3, [] ) );
   }
 }

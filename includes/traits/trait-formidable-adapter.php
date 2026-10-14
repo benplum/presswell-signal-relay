@@ -10,20 +10,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 trait PWTSR_Formidable_Trait {
 
   /**
-   * Initialize Formidable hooks when available.
+   * Register Formidable Forms hooks. The bootstrap only loads this adapter when Formidable Forms is active.
    */
-  public function maybe_bootstrap_formidable() {
-    if ( ! class_exists( 'FrmAppHelper' ) ) {
-      return;
-    }
-
+  protected function construct_formidable_trait() {
     add_action( 'frm_enqueue_form_scripts', [ $this, 'maybe_enqueue_formidable_assets' ], 20, 1 );
     add_filter( 'frm_available_fields', [ $this, 'register_formidable_transceiver_field_type' ], 20 );
     add_filter( 'frm_get_field_type_class', [ $this, 'register_formidable_transceiver_field_class' ], 20, 2 );
     add_action( 'admin_print_footer_scripts', [ $this, 'print_formidable_radar_icon_symbol' ], 20 );
     add_filter( 'frm_pre_create_entry', [ $this, 'sanitize_formidable_submission_values' ], 20, 1 );
     add_filter( 'frm_display_value_custom', [ $this, 'format_formidable_tracking_display_value' ], 20, 3 );
-    add_action( 'frm_show_entry', [ $this, 'render_formidable_tracking_block' ], 20, 1 );
     add_filter( 'frm_helper_shortcodes', [ $this, 'register_formidable_tracking_helper_shortcodes' ], 20, 2 );
     add_filter( 'frm_content', [ $this, 'replace_formidable_tracking_tokens' ], 30, 3 );
   }
@@ -93,7 +88,7 @@ trait PWTSR_Formidable_Trait {
       return;
     }
 
-    $this->enqueue_tracking_script( PWTSR::ADAPTER_FORMIDABLE );
+    $this->enqueue_tracking_script();
   }
 
   /**
@@ -157,17 +152,17 @@ trait PWTSR_Formidable_Trait {
     }
 
     $posted_tracking = [];
-    if ( isset( $values['pwtsr_tracking'] ) && is_array( $values['pwtsr_tracking'] ) ) {
-      $posted_tracking = $values['pwtsr_tracking'];
+    if ( isset( $values[PWTSR::FIELD_NAME] ) && is_array( $values[PWTSR::FIELD_NAME] ) ) {
+      $posted_tracking = $values[PWTSR::FIELD_NAME];
     } else {
       // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Presence check only; nonce is validated before request data is consumed.
-      if ( isset( $_POST['pwtsr_tracking'] ) && is_array( $_POST['pwtsr_tracking'] ) ) {
+      if ( isset( $_POST[PWTSR::FIELD_NAME] ) && is_array( $_POST[PWTSR::FIELD_NAME] ) ) {
         $nonce_key = 'frm_submit_entry_' . $form_id;
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Value is used only for nonce verification.
         if ( isset( $_POST[ $nonce_key ] ) && ! is_array( $_POST[ $nonce_key ] ) ) {
           $nonce = sanitize_text_field( wp_unslash( $_POST[ $nonce_key ] ) );
           if ( '' !== $nonce && wp_verify_nonce( $nonce, 'frm_submit_entry_nonce' ) ) {
-            $posted_tracking = wp_unslash( $_POST['pwtsr_tracking'] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above; values are sanitized below.
+            $posted_tracking = wp_unslash( $_POST[PWTSR::FIELD_NAME] ); // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Submission nonce validated above; values are sanitized below.
           }
         }
       }
@@ -185,7 +180,7 @@ trait PWTSR_Formidable_Trait {
       $values['item_meta'][ $field_id ] = $pairs;
     }
 
-    unset( $values['pwtsr_tracking'] );
+    unset( $values[PWTSR::FIELD_NAME] );
 
     return $values;
   }
@@ -219,36 +214,6 @@ trait PWTSR_Formidable_Trait {
     }
 
     return implode( "\n", $lines );
-  }
-
-  /**
-   * Render tracking values in Formidable entry detail view.
-   *
-   * @param object $entry Formidable entry object.
-   */
-  public function render_formidable_tracking_block( $entry ) {
-    if ( ! is_object( $entry ) || empty( $entry->id ) ) {
-      return;
-    }
-
-    $pairs = $this->get_formidable_tracking_pairs( (int) $entry->id, isset( $entry->form_id ) ? (int) $entry->form_id : 0 );
-    if ( empty( $pairs ) ) {
-      return;
-    }
-
-    echo '<div class="frm_grid_container frm-with-margin">';
-    echo '<h3 class="hndle"><span>' . esc_html__( 'Tracking', 'presswell-signal-relay' ) . '</span></h3>';
-    echo '<table class="widefat striped"><tbody>';
-
-    foreach ( $pairs as $key => $value ) {
-      echo '<tr>';
-      echo '<th scope="row" style="width:220px;">' . esc_html( $key ) . '</th>';
-      echo '<td>' . esc_html( $value ) . '</td>';
-      echo '</tr>';
-    }
-
-    echo '</tbody></table>';
-    echo '</div>';
   }
 
   /**
@@ -288,7 +253,7 @@ trait PWTSR_Formidable_Trait {
    * Replace tracking tokens in Formidable content pipelines.
    *
    * Supported tokens:
-   * - [tracking_all], [tracking_values], {tracking_all}, {tracking_values}
+   * - [tracking_all], {tracking_all}
    * - [tracking_<key>], {tracking_<key>} e.g. [tracking_utm_source]
    *
    * @param string            $content Content string.
@@ -307,18 +272,13 @@ trait PWTSR_Formidable_Trait {
       return $content;
     }
 
-    $pairs = $this->get_formidable_tracking_pairs( (int) $entry_object->id, isset( $entry_object->form_id ) ? (int) $entry_object->form_id : 0 );
+    $pairs   = $this->get_formidable_tracking_pairs( (int) $entry_object->id, isset( $entry_object->form_id ) ? (int) $entry_object->form_id : 0 );
+    $context = PWTSR_Transceiver_Markup::get_content_context( $content );
 
-    $all_lines = [];
-    foreach ( $pairs as $key => $value ) {
-      $all_lines[] = $key . ': ' . $value;
-    }
-    $all_value = implode( "\n", $all_lines );
-
-    $content = str_replace( [ '[tracking_all]', '[tracking_values]', '{tracking_all}', '{tracking_values}' ], $all_value, $content );
+    $content = str_replace( [ '[tracking_all]', '{tracking_all}' ], PWTSR_Transceiver_Markup::format_all_values( $pairs, $context ), $content );
 
     foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_FORMIDABLE ) as $key ) {
-      $value   = isset( $pairs[ $key ] ) ? $pairs[ $key ] : '';
+      $value   = isset( $pairs[ $key ] ) ? PWTSR_Transceiver_Markup::escape_for_context( $pairs[ $key ], $context ) : '';
       $content = str_replace(
         [ '[tracking_' . $key . ']', '{tracking_' . $key . '}' ],
         $value,
@@ -354,6 +314,7 @@ trait PWTSR_Formidable_Trait {
    * Fetch tracking pairs stored against an entry.
    *
    * @param int $entry_id Entry id.
+   * @param int $form_id  Form id, used to find the tracking field.
    *
    * @return array
    */
@@ -419,13 +380,9 @@ trait PWTSR_Formidable_Trait {
    * @return array
    */
   private function normalize_formidable_tracking_pairs( $raw ) {
+    // Formidable unserializes its own meta; strings here are visitor input, so only JSON is read.
     if ( is_string( $raw ) ) {
-      $decoded = json_decode( $raw, true );
-      if ( is_array( $decoded ) ) {
-        $raw = $decoded;
-      } else {
-        $raw = maybe_unserialize( $raw );
-      }
+      $raw = json_decode( $raw, true );
     }
 
     if ( is_object( $raw ) ) {

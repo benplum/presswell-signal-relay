@@ -150,4 +150,27 @@ class FormidableAdapterTest extends WP_UnitTestCase {
     $this->assertStringContainsString( 'SOURCE:google', $result );
     $this->assertStringContainsString( 'MEDIUM:cpc', $result );
   }
+
+  public function test_tokens_are_escaped_for_the_content_they_land_in() {
+    FrmField::$fields_by_form[5] = [ (object) [ 'id' => 9 ] ];
+    FrmEntryMeta::$meta['1:9']   = [ 'utm_source' => 'a"b & c' ];
+    $entry                       = (object) [ 'id' => 1, 'form_id' => 5 ];
+
+    $url  = $this->adapter->replace_formidable_tracking_tokens( 'https://example.com/thanks?src=[tracking_utm_source]', null, $entry );
+    $html = $this->adapter->replace_formidable_tracking_tokens( '<a title="[tracking_utm_source]">x</a>', null, $entry );
+    $text = $this->adapter->replace_formidable_tracking_tokens( 'Source: [tracking_utm_source]', null, $entry );
+
+    $this->assertSame( 'https://example.com/thanks?src=a%22b%20%26%20c', $url );
+    $this->assertSame( '<a title="a&quot;b &amp; c">x</a>', $html );
+    $this->assertSame( 'Source: a"b & c', $text );
+  }
+
+  public function test_serialized_strings_are_never_unserialized() {
+    FrmField::$fields_by_form[5] = [ (object) [ 'id' => 9 ] ];
+    FrmEntryMeta::$meta['1:9']   = serialize( [ 'utm_source' => 'google' ] );
+
+    $text = $this->adapter->replace_formidable_tracking_tokens( 'Source: [tracking_utm_source]', null, (object) [ 'id' => 1, 'form_id' => 5 ] );
+
+    $this->assertSame( 'Source: ', $text );
+  }
 }

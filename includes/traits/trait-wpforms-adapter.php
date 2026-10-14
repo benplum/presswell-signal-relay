@@ -17,23 +17,15 @@ trait PWTSR_WPForms_Trait {
   private $wpforms_field_registered = false;
 
   /**
-   * Initialize WPForms hooks when available.
+   * Register WPForms hooks. The bootstrap only loads this adapter when WPForms is active.
    */
-  public function maybe_bootstrap_wpforms() {
-    if ( ! function_exists( 'wpforms' ) && ! defined( 'WPFORMS_VERSION' ) ) {
-      return;
-    }
-
-    add_action( 'wpforms_loaded', [ $this, 'register_wpforms_transceiver_field' ], 20 );
-
+  protected function construct_wpforms_trait() {
     add_action( 'wpforms_frontend_output_before', [ $this, 'maybe_enqueue_wpforms_assets' ], 20, 2 );
-    add_filter( 'wpforms_process_filter', [ $this, 'sanitize_wpforms_tracking_submission_values' ], 20, 3 );
-    add_action( 'wpforms_process_entry_saved', [ $this, 'persist_wpforms_tracking_entry_meta' ], 20, 4 );
 
     add_filter( 'wpforms_smart_tags', [ $this, 'register_wpforms_tracking_smart_tags' ], 20, 1 );
     add_filter( 'wpforms_smarttags_process_value', [ $this, 'replace_wpforms_tracking_smart_tags' ], 20, 7 );
 
-    // WPForms might already be fully loaded when this adapter initializes.
+    // Adapters register on init, after WPForms has loaded its field classes.
     $this->register_wpforms_transceiver_field();
   }
 
@@ -70,124 +62,7 @@ trait PWTSR_WPForms_Trait {
       return;
     }
 
-    $this->enqueue_tracking_script( PWTSR::ADAPTER_WPFORMS );
-  }
-
-  /**
-   * Sanitize tracking values from transceiver compound fields.
-   *
-   * @param array $fields    Processed fields.
-   * @param array $entry     Raw submission.
-   * @param array $form_data Form data.
-   *
-   * @return array
-   */
-  public function sanitize_wpforms_tracking_submission_values( $fields, $entry, $form_data ) {
-    if ( ! is_array( $fields ) || ! is_array( $form_data ) ) {
-      return $fields;
-    }
-
-    $field_ids = $this->get_wpforms_transceiver_field_ids( $form_data );
-    if ( empty( $field_ids ) ) {
-      return $fields;
-    }
-
-    $keys = $this->service->get_tracking_keys( PWTSR::ADAPTER_WPFORMS );
-
-    foreach ( $field_ids as $field_id ) {
-      if ( ! isset( $fields[ $field_id ] ) || ! is_array( $fields[ $field_id ] ) ) {
-        continue;
-      }
-
-      $row   = $fields[ $field_id ];
-      $raw   = isset( $row['tracking'] ) && is_array( $row['tracking'] ) ? $row['tracking'] : [];
-      $value = isset( $row['value'] ) ? $row['value'] : [];
-
-      if ( is_array( $value ) ) {
-        $raw = array_merge( $raw, $value );
-      }
-
-      $clean_pairs = [];
-      foreach ( $keys as $key ) {
-        $candidate = '';
-
-        if ( isset( $raw[ $key ] ) && ! is_array( $raw[ $key ] ) ) {
-          $candidate = $raw[ $key ];
-        } elseif ( isset( $row[ $key ] ) && ! is_array( $row[ $key ] ) ) {
-          $candidate = $row[ $key ];
-        }
-
-        $clean = $this->service->sanitize_tracking_value( $key, $candidate );
-        if ( '' !== $clean ) {
-          $clean_pairs[ $key ] = $clean;
-        }
-      }
-
-      $lines = [];
-      foreach ( $clean_pairs as $key => $pair_value ) {
-        $lines[] = $key . ': ' . $pair_value;
-      }
-
-      $fields[ $field_id ]['tracking'] = $clean_pairs;
-      $fields[ $field_id ]['value']    = implode( "\n", $lines );
-
-      foreach ( $keys as $key ) {
-        $fields[ $field_id ][ $key ] = isset( $clean_pairs[ $key ] ) ? $clean_pairs[ $key ] : '';
-      }
-    }
-
-    return $fields;
-  }
-
-  /**
-   * Persist tracking values into entry meta for robust smart-tag resolution.
-   *
-   * @param array      $fields    Processed fields.
-   * @param array      $entry     Raw entry data.
-   * @param array      $form_data Form data.
-   * @param string|int $entry_id  Entry id.
-   */
-  public function persist_wpforms_tracking_entry_meta( $fields, $entry, $form_data, $entry_id ) {
-    $entry_id = absint( $entry_id );
-    if ( ! $entry_id ) {
-      return;
-    }
-
-    $pairs = $this->get_wpforms_tracking_pairs( $fields, $form_data, $entry_id );
-    if ( empty( $pairs ) ) {
-      return;
-    }
-
-    $entry_meta = wpforms()->obj( 'entry_meta' );
-    if ( ! $entry_meta ) {
-      return;
-    }
-
-    $form_id = ! empty( $form_data['id'] ) ? absint( $form_data['id'] ) : 0;
-
-    foreach ( $pairs as $key => $value ) {
-      $entry_meta->add(
-        [
-          'entry_id' => $entry_id,
-          'form_id'  => $form_id,
-          'user_id'  => get_current_user_id(),
-          'type'     => 'pwtsr_tracking_' . $key,
-          'data'     => $value,
-        ],
-        'entry_meta'
-      );
-    }
-
-    $entry_meta->add(
-      [
-        'entry_id' => $entry_id,
-        'form_id'  => $form_id,
-        'user_id'  => get_current_user_id(),
-        'type'     => 'pwtsr_tracking_all',
-        'data'     => wp_json_encode( $pairs ),
-      ],
-      'entry_meta'
-    );
+    $this->enqueue_tracking_script();
   }
 
   /**
@@ -224,16 +99,16 @@ trait PWTSR_WPForms_Trait {
    * @param array       $fields           Processed fields.
    * @param int|string  $entry_id         Entry id.
    * @param object|null $smart_tag_object Smart tag object.
-   * @param string      $context          Context string.
+   * @param string      $context          Context string. WPForms only passes it from 1.9.7.3.
    *
    * @return mixed
    */
-  public function replace_wpforms_tracking_smart_tags( $value, $tag_name, $form_data, $fields, $entry_id, $smart_tag_object, $context ) {
+  public function replace_wpforms_tracking_smart_tags( $value, $tag_name, $form_data = [], $fields = [], $entry_id = 0, $smart_tag_object = null, $context = '' ) {
     if ( ! is_string( $tag_name ) || 0 !== strpos( $tag_name, 'tracking_' ) ) {
       return $value;
     }
 
-    $pairs = $this->get_wpforms_tracking_pairs( $fields, $form_data, $entry_id );
+    $pairs = $this->get_wpforms_tracking_pairs( $fields, $form_data );
 
     if ( 'tracking_all' === $tag_name ) {
       if ( empty( $pairs ) ) {
@@ -288,100 +163,27 @@ trait PWTSR_WPForms_Trait {
   }
 
   /**
-   * Get tracking pairs from current fields with entry-meta fallback.
+   * Tracking pairs from the processed fields, which hold them under 'tracking'.
    *
-   * @param array      $fields    Processed fields.
-   * @param array      $form_data Form data.
-   * @param int|string $entry_id  Entry id.
+   * @param array $fields    Processed fields.
+   * @param array $form_data Form data.
    *
    * @return array
    */
-  private function get_wpforms_tracking_pairs( $fields, $form_data, $entry_id ) {
+  private function get_wpforms_tracking_pairs( $fields, $form_data ) {
     $pairs = [];
-    $keys  = $this->service->get_tracking_keys( PWTSR::ADAPTER_WPFORMS );
+    if ( ! is_array( $fields ) ) {
+      return $pairs;
+    }
 
     foreach ( $this->get_wpforms_transceiver_field_ids( $form_data ) as $field_id ) {
-      if ( ! is_array( $fields ) || ! isset( $fields[ $field_id ] ) || ! is_array( $fields[ $field_id ] ) ) {
-        continue;
-      }
+      $tracking = isset( $fields[ $field_id ]['tracking'] ) && is_array( $fields[ $field_id ]['tracking'] ) ? $fields[ $field_id ]['tracking'] : [];
 
-      $row = $fields[ $field_id ];
-
-      foreach ( $keys as $key ) {
-        $candidate = '';
-
-        if ( isset( $row['tracking'][ $key ] ) && ! is_array( $row['tracking'][ $key ] ) ) {
-          $candidate = $row['tracking'][ $key ];
-        } elseif ( isset( $row[ $key ] ) && ! is_array( $row[ $key ] ) ) {
-          $candidate = $row[ $key ];
-        }
-
-        $clean = $this->service->sanitize_tracking_value( $key, $candidate );
+      foreach ( $this->service->get_tracking_keys( PWTSR::ADAPTER_WPFORMS ) as $key ) {
+        $clean = isset( $tracking[ $key ] ) ? $this->service->sanitize_tracking_value( $key, $tracking[ $key ] ) : '';
         if ( '' !== $clean ) {
           $pairs[ $key ] = $clean;
         }
-      }
-    }
-
-    if ( ! empty( $pairs ) ) {
-      return $pairs;
-    }
-
-    $entry_id = absint( $entry_id );
-    if ( ! $entry_id ) {
-      return [];
-    }
-
-    $entry_meta = wpforms()->obj( 'entry_meta' );
-    if ( ! $entry_meta ) {
-      return [];
-    }
-
-    $all_meta = $entry_meta->get_meta(
-      [
-        'entry_id' => $entry_id,
-        'type'     => 'pwtsr_tracking_all',
-        'number'   => 1,
-      ]
-    );
-
-    if ( ! empty( $all_meta[0]->data ) && is_string( $all_meta[0]->data ) ) {
-      $decoded = json_decode( $all_meta[0]->data, true );
-      if ( is_array( $decoded ) ) {
-        foreach ( $decoded as $k => $v ) {
-          $clean_key = sanitize_key( $k );
-          if ( '' === $clean_key || is_array( $v ) ) {
-            continue;
-          }
-
-          $clean_val = $this->service->sanitize_tracking_value( $clean_key, (string) $v );
-          if ( '' !== $clean_val ) {
-            $pairs[ $clean_key ] = $clean_val;
-          }
-        }
-      }
-    }
-
-    if ( ! empty( $pairs ) ) {
-      return $pairs;
-    }
-
-    foreach ( $keys as $key ) {
-      $rows = $entry_meta->get_meta(
-        [
-          'entry_id' => $entry_id,
-          'type'     => 'pwtsr_tracking_' . $key,
-          'number'   => 1,
-        ]
-      );
-
-      if ( empty( $rows[0]->data ) || ! is_string( $rows[0]->data ) ) {
-        continue;
-      }
-
-      $clean = $this->service->sanitize_tracking_value( $key, $rows[0]->data );
-      if ( '' !== $clean ) {
-        $pairs[ $key ] = $clean;
       }
     }
 

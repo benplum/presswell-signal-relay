@@ -26,32 +26,19 @@ class WPFormsAdapterTest extends WP_UnitTestCase {
     $this->adapter = new PWTSR_Test_WPForms_Adapter_Harness( new PWTSR_Tracking_Service() );
   }
 
-  public function test_sanitize_submission_values_builds_tracking_pairs_and_string_value() {
-    $form_data = [
-      'fields' => [
-        7 => [
-          'id' => 7,
-          'type' => PWTSR::FIELD_TYPE,
-        ],
-      ],
-    ];
-
-    $fields = [
+  public function test_smart_tags_sanitize_stored_tracking_values() {
+    $form_data = [ 'fields' => [ 7 => [ 'id' => 7, 'type' => PWTSR::FIELD_TYPE ] ] ];
+    $fields    = [
       7 => [
         'tracking' => [
-          'utm_source' => ' Google ',
-          'utm_campaign' => '  spring_launch',
+          'utm_source' => ' <b>Google</b> ',
+          'injected'   => 'not a tracking key',
         ],
       ],
     ];
 
-    $sanitized = $this->adapter->sanitize_wpforms_tracking_submission_values( $fields, [], $form_data );
-
-    $this->assertArrayHasKey( 'tracking', $sanitized[7] );
-    $this->assertSame( 'Google', $sanitized[7]['tracking']['utm_source'] );
-    $this->assertSame( 'spring_launch', $sanitized[7]['tracking']['utm_campaign'] );
-    $this->assertStringContainsString( 'utm_source: Google', $sanitized[7]['value'] );
-    $this->assertStringContainsString( 'utm_campaign: spring_launch', $sanitized[7]['value'] );
+    $this->assertSame( 'Google', $this->adapter->replace_wpforms_tracking_smart_tags( '', 'tracking_utm_source', $form_data, $fields ) );
+    $this->assertSame( 'utm_source: Google', $this->adapter->replace_wpforms_tracking_smart_tags( '', 'tracking_all', $form_data, $fields ) );
   }
 
   public function test_replace_tracking_smart_tags_returns_specific_and_all_values() {
@@ -79,5 +66,17 @@ class WPFormsAdapterTest extends WP_UnitTestCase {
     $this->assertSame( 'newsletter', $single );
     $this->assertStringContainsString( 'utm_source: newsletter', $all );
     $this->assertStringContainsString( 'utm_medium: email', $all );
+  }
+
+  public function test_replace_tracking_smart_tags_accepts_six_arguments_from_older_wpforms() {
+    $form_data = [ 'fields' => [ 11 => [ 'id' => 11, 'type' => PWTSR::FIELD_TYPE ] ] ];
+    $fields    = [ 11 => [ 'tracking' => [ 'utm_source' => 'newsletter' ] ] ];
+
+    $value = call_user_func_array(
+      [ $this->adapter, 'replace_wpforms_tracking_smart_tags' ],
+      [ '', 'tracking_utm_source', $form_data, $fields, 0, null ]
+    );
+
+    $this->assertSame( 'newsletter', $value );
   }
 }

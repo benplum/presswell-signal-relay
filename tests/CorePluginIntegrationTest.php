@@ -41,4 +41,39 @@ class CorePluginIntegrationTest extends WP_UnitTestCase {
     $this->assertStringContainsString( PWTSR::SETTINGS_PAGE_URL, $result[0] );
     $this->assertStringContainsString( 'Deactivate', $result[1] );
   }
+
+  public function test_admin_styles_load_only_on_the_settings_screen() {
+    $this->plugin->enqueue_admin_assets( 'index.php' );
+    $this->assertFalse( wp_style_is( PWTSR::ASSET_HANDLE_ADMIN_STYLE, 'enqueued' ) );
+
+    $this->plugin->enqueue_admin_assets( PWTSR::SETTINGS_PAGE_SCREEN_ID );
+    $this->assertTrue( wp_style_is( PWTSR::ASSET_HANDLE_ADMIN_STYLE, 'enqueued' ) );
+
+    wp_dequeue_style( PWTSR::ASSET_HANDLE_ADMIN_STYLE );
+  }
+
+  public function test_every_constant_resolves() {
+    // A constant that refers to itself only fails when first read, often on an admin screen.
+    $constants = ( new ReflectionClass( 'PWTSR' ) )->getConstants();
+
+    $this->assertNotEmpty( $constants );
+    foreach ( $constants as $name => $value ) {
+      $this->assertNotNull( $value, $name );
+    }
+  }
+
+  public function test_settings_register_and_page_renders() {
+    wp_set_current_user( self::factory()->user->create( [ 'role' => 'administrator' ] ) );
+
+    $this->plugin->register_settings();
+
+    ob_start();
+    $this->plugin->render_settings_page();
+    $html = ob_get_clean();
+
+    $this->assertStringContainsString( PWTSR::SETTINGS_GROUP, $html );
+    $this->assertStringContainsString( 'pwtsr-button-group', $html );
+
+    wp_set_current_user( 0 );
+  }
 }

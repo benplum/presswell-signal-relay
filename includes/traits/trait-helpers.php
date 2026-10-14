@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Shared utility helpers for locating plugin assets and rendering templates.
  */
-trait Presswell_Tracking_Signal_Relay_Helpers_Trait {
+trait PWTSR_Helpers_Trait {
   /**
    * Build an absolute path inside the plugin directory.
    *

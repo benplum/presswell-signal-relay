@@ -95,40 +95,144 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
      * @return array
      */
     public function get_inputs() {
-      $keys   = $this->service()->get_tracking_keys( 'gravityforms' );
-      $inputs = [];
+      $inputs   = [];
+      $suffixes = self::get_input_suffixes( count( $this->get_current_keys() ) );
 
-      if ( empty( $keys ) ) {
-        return $inputs;
-      }
-
-      $index = 1;
-      foreach ( $keys as $key ) {
-        $inputs[] = [
-          'id'       => sprintf( '%d.%d', $this->id, $index ),
-          'label'    => $key,
-          'name'     => $key,
-          'isHidden' => true,
-        ];
-        $index++;
+      foreach ( $this->get_current_keys() as $index => $key ) {
+        $inputs[] = $this->build_input( $suffixes[ $index ], $key );
       }
 
       return $inputs;
     }
 
     /**
-     * Ensure Gravity Forms always treats the field as multi-input.
+     * Inputs saved with entries: the ones stored on the field, plus any key added since.
+     *
+     * Values are matched to keys by each input's stored key, never by position, so adding,
+     * removing, or reordering tracking keys doesn't shift existing entries.
      *
      * @return array
      */
     public function get_entry_inputs() {
-      if ( is_array( $this->inputs ) && ! empty( $this->inputs ) ) {
-        return $this->inputs;
+      $inputs = is_array( $this->inputs ) ? array_values( array_filter( $this->inputs, 'is_array' ) ) : [];
+      $known  = [];
+      $last   = 0;
+
+      foreach ( $inputs as $input ) {
+        $key = $this->get_stored_input_key( $input );
+        if ( '' !== $key ) {
+          $known[ $key ] = true;
+        }
+
+        $parts = explode( '.', isset( $input['id'] ) ? (string) $input['id'] : '' );
+        $last  = max( $last, isset( $parts[1] ) ? absint( $parts[1] ) : 0 );
       }
 
-      $this->inputs = $this->get_inputs();
+      foreach ( $this->get_current_keys() as $key ) {
+        if ( isset( $known[ $key ] ) ) {
+          continue;
+        }
+
+        $last     = self::next_input_suffix( $last );
+        $inputs[] = $this->build_input( $last, $key );
+      }
+
+      $this->inputs = $inputs;
 
       return $this->inputs;
+    }
+
+    /**
+     * Input number suffixes for a field with the given number of inputs.
+     *
+     * Gravity Forms compares input IDs as numbers in places, so 5.10 would collide with 5.1;
+     * like its checkbox field, skip every multiple of ten.
+     *
+     * @param int $count Number of inputs.
+     *
+     * @return int[]
+     */
+    public static function get_input_suffixes( $count ) {
+      $suffixes = [];
+      $suffix   = 0;
+
+      for ( $i = 0; $i < $count; $i++ ) {
+        $suffix     = self::next_input_suffix( $suffix );
+        $suffixes[] = $suffix;
+      }
+
+      return $suffixes;
+    }
+
+    /**
+     * Next usable input suffix after the given one.
+     *
+     * @param int $suffix Current suffix.
+     *
+     * @return int
+     */
+    private static function next_input_suffix( $suffix ) {
+      $suffix++;
+      if ( 0 === $suffix % 10 ) {
+        $suffix++;
+      }
+
+      return $suffix;
+    }
+
+    /**
+     * Build one input definition.
+     *
+     * @param int    $suffix Input number suffix.
+     * @param string $key    Tracking key.
+     *
+     * @return array
+     */
+    private function build_input( $suffix, $key ) {
+      return [
+        'id'       => sprintf( '%d.%d', $this->id, $suffix ),
+        'label'    => $key,
+        'name'     => $key,
+        'isHidden' => true,
+      ];
+    }
+
+    /**
+     * Tracking keys currently configured.
+     *
+     * @return string[]
+     */
+    private function get_current_keys() {
+      return $this->service()->get_tracking_keys( PWTSR::ADAPTER_GRAVITY_FORMS );
+    }
+
+    /**
+     * Read the tracking key an input stores.
+     *
+     * @param array $input Input definition.
+     *
+     * @return string
+     */
+    private function get_stored_input_key( $input ) {
+      // Inputs added by older editor code carry the key as their label with an empty name.
+      foreach ( [ 'name', 'label' ] as $property ) {
+        if ( ! empty( $input[ $property ] ) && is_string( $input[ $property ] ) ) {
+          return sanitize_key( $input[ $property ] );
+        }
+      }
+
+      return '';
+    }
+
+    /**
+     * Sanitized key/value pairs captured on an entry, skipping empty values.
+     *
+     * @param array $entry Entry.
+     *
+     * @return array
+     */
+    public function get_entry_tracking_pairs( $entry ) {
+      return $this->filter_empty_pairs( $this->get_tracking_value_pairs( $entry ) );
     }
 
     /**
@@ -141,21 +245,28 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
      * @return string
      */
     public function get_field_input( $form, $value = '', $entry = null ) {
-      $form_id   = absint( rgar( $form, 'id' ) );
-      $inputs    = $this->get_inputs();
-      $input_tag = [];
+      $form_id    = absint( rgar( $form, 'id' ) );
+      $inputs     = $this->get_entry_inputs();
+      $input_tag  = [];
       $debug_mode = $this->is_debug_field_mode();
+      $keys       = $this->get_current_keys();
 
       if ( empty( $inputs ) ) {
         return '';
       }
 
       foreach ( $inputs as $input ) {
+        $key_name = $this->get_stored_input_key( $input );
+
+        // Inputs left over from a removed key stay on old entries but aren't captured anymore.
+        if ( '' === $key_name || ! in_array( $key_name, $keys, true ) ) {
+          continue;
+        }
+
         $input_id   = (string) $input['id'];
         $custom_id  = sprintf( 'input_%d_%s', $form_id, str_replace( '.', '_', $input_id ) );
         $field_name = 'input_' . str_replace( '.', '_', $input_id );
         $current    = '';
-        $key_name   = isset( $input['name'] ) ? (string) $input['name'] : '';
 
         if ( is_array( $value ) ) {
           $current = rgar( $value, $input_id );
@@ -172,39 +283,14 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
 
         $current = $this->service()->sanitize_tracking_value( $key_name, $current );
 
-        if ( $debug_mode ) {
-          $input_tag[] = sprintf(
-            '<div class="presswell-debug-field-row"><label class="presswell-debug-field-label" for="%1$s">%2$s</label><input type="text" id="%1$s" name="%3$s" value="%4$s" readonly="readonly" data-presswell-transceiver="%5$s" /></div>',
-            esc_attr( $custom_id ),
-            esc_html( $key_name ),
-            esc_attr( $field_name ),
-            esc_attr( $current ),
-            esc_attr( $input['name'] )
-          );
-          continue;
-        }
-
-        $input_tag[] = sprintf(
-          '<input type="hidden" id="%1$s" name="%2$s" value="%3$s" data-presswell-transceiver="%4$s" />',
-          esc_attr( $custom_id ),
-          esc_attr( $field_name ),
-          esc_attr( $current ),
-          esc_attr( $input['name'] )
-        );
+        $input_tag[] = PWTSR_Transceiver_Markup::render_input( $key_name, $field_name, $custom_id, $debug_mode, $current );
       }
 
-      $wrapper_classes = 'presswell-transceiver presswell-gravity-transceiver presswell-transceiver-field ginput_container';
-      if ( $debug_mode ) {
-        $wrapper_classes .= ' gform-theme__disable-reset';
-      }
-
-      return PWTSR_Transceiver_Markup::sanitize_wrapper_markup(
-        PWTSR_Transceiver_Markup::render_wrapper(
-          $wrapper_classes,
-          'gravity',
-          implode( '', $input_tag ),
-          $debug_mode
-        )
+      return PWTSR_Transceiver_Markup::render(
+        PWTSR::ADAPTER_GRAVITY_FORMS,
+        implode( '', $input_tag ),
+        $debug_mode,
+        'pwtsr-transceiver-field ginput_container' . ( $debug_mode ? ' gform-theme__disable-reset' : '' )
       );
     }
 
@@ -214,17 +300,8 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
      * @return bool
      */
     private function is_debug_field_mode() {
-      if ( class_exists( 'GFCommon' ) && GFCommon::is_form_editor() ) {
-        return false;
-      }
-
-      if ( ! function_exists( 'presswell_tracking_signal_relay' ) ) {
-        return false;
-      }
-
-      $plugin = presswell_tracking_signal_relay();
-
-      return $plugin && method_exists( $plugin, 'should_show_debug_styles' ) && $plugin->should_show_debug_styles();
+      // The form editor previews the field itself, never the debug panel.
+      return ! ( class_exists( 'GFCommon' ) && GFCommon::is_form_editor() ) && PWTSR_Transceiver_Markup::is_debug_mode();
     }
 
     /**
@@ -243,12 +320,12 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
         $label    = esc_html__( 'Tracking', 'presswell-signal-relay' );
 
         $badge = sprintf(
-          '<div class="presswell-transceiver-editor-badge" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-weight:600;"><img src="%1$s" alt="%2$s" width="20" height="20" style="display:block;" /><span>%2$s</span></div>',
+          '<div class="pwtsr-transceiver-editor-badge" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-weight:600;"><img src="%1$s" alt="%2$s" width="20" height="20" style="display:block;" /><span>%2$s</span></div>',
           $icon_url,
           $label
         );
 
-        return sprintf( '<div class="presswell-transceiver-editor-preview">%1$s%2$s</div>', $badge, $content );
+        return sprintf( '<div class="pwtsr-transceiver-editor-preview">%1$s%2$s</div>', $badge, $content );
       }
 
       if ( GFCommon::is_entry_detail() ) {
@@ -258,7 +335,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
       $original_label       = $this->label;
       $original_description = $this->description;
 
-      $this->label       = 'Signals';
+      $this->label       = __( 'Signals', 'presswell-signal-relay' );
       $this->description = '';
 
       $content = parent::get_field_content( $value, $lead_id, $form_id );
@@ -304,7 +381,7 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
         $items[] = sprintf( '<li><strong>%s:</strong> %s</li>', esc_html( $key ), esc_html( $val ) );
       }
 
-      return sprintf( '<ul class="presswell-utm-entry-detail">%s</ul>', implode( '', $items ) );
+      return sprintf( '<ul class="pwtsr-utm-entry-detail">%s</ul>', implode( '', $items ) );
     }
 
     /**
@@ -319,15 +396,19 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
      * @return string
      */
     public function get_value_entry_list( $value, $entry, $field_id, $columns, $form ) {
-      $pairs = $this->get_tracking_value_pairs( $entry );
-      $pairs = $this->filter_empty_pairs( $pairs );
+      // A column for one input (12.3) shows that key's value; the whole-field column a short summary.
+      if ( false !== strpos( (string) $field_id, '.' ) ) {
+        $key = $this->get_input_key( 'input_' . str_replace( '.', '_', (string) $field_id ) );
 
+        return '' === $key ? '' : esc_html( $this->service()->sanitize_tracking_value( $key, rgar( $entry, (string) $field_id ) ) );
+      }
+
+      $pairs = $this->get_entry_tracking_pairs( $entry );
       if ( empty( $pairs ) ) {
         return '';
       }
 
-      $summary = array_slice( $this->format_pairs_as_text( $pairs ), 0, 3 );
-      return esc_html( implode( ', ', $summary ) );
+      return esc_html( implode( ', ', array_slice( $this->format_pairs_as_text( $pairs ), 0, 3 ) ) );
     }
 
     /**
@@ -338,24 +419,21 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
      * @return array
      */
     private function get_tracking_value_pairs( $raw ) {
-      $keys = $this->service()->get_tracking_keys( 'gravityforms' );
-      if ( empty( $keys ) ) {
-        return [];
-      }
-
       $source = $this->normalize_value_source( $raw );
       $pairs  = [];
 
-      $index = 1;
-      foreach ( $keys as $key ) {
-        $input_id = sprintf( '%d.%d', $this->id, $index );
-        $value    = rgar( $source, $input_id );
+      foreach ( $this->get_entry_inputs() as $input ) {
+        $key = $this->get_stored_input_key( $input );
+        if ( '' === $key || ! isset( $input['id'] ) ) {
+          continue;
+        }
+
+        $value = rgar( $source, (string) $input['id'] );
         if ( null === $value && isset( $source[ $key ] ) ) {
           $value = $source[ $key ];
         }
 
         $pairs[ $key ] = $this->service()->sanitize_tracking_value( $key, $value );
-        $index++;
       }
 
       return $pairs;
@@ -393,9 +471,9 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
     }
 
     /**
-     * Normalize serialized or JSON-encoded values into arrays.
+     * Normalize array or JSON-encoded values into arrays.
      *
-     * @param mixed $raw Potentially serialized value.
+     * @param mixed $raw Entry value or JSON string.
      *
      * @return array
      */
@@ -404,15 +482,11 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
         return $raw;
       }
 
+      // Never unserialize: entry strings come from visitors.
       if ( is_string( $raw ) ) {
-        $maybe = json_decode( $raw, true );
-        if ( is_array( $maybe ) ) {
-          return $maybe;
-        }
-
-        $unserialized = maybe_unserialize( $raw );
-        if ( is_array( $unserialized ) ) {
-          return $unserialized;
+        $decoded = json_decode( $raw, true );
+        if ( is_array( $decoded ) ) {
+          return $decoded;
         }
       }
 
@@ -449,6 +523,84 @@ if ( class_exists( 'GF_Field' ) && ! class_exists( 'PWTSR_Gravity_Forms_Field' )
       }
 
       return $lines;
+    }
+
+    /**
+     * Sanitize an input value before Gravity Forms saves it to the entry (Gravity Forms 3.0+).
+     *
+     * @param mixed  $value          Submitted input value.
+     * @param array  $form           Current form.
+     * @param string $input_name     Posted input name, e.g. input_5_2.
+     * @param int    $entry_id       Entry ID.
+     * @param array  $entry          Entry being saved.
+     * @param string $repeater_index Repeater index when nested in a repeater.
+     *
+     * @return string
+     */
+    public function get_value_save_input( $value, $form, $input_name, $entry_id, $entry, $repeater_index = '' ) {
+      return $this->sanitize_input_value( $value, $input_name );
+    }
+
+    /**
+     * Sanitize an input value before Gravity Forms saves it to the entry (Gravity Forms 2.x).
+     *
+     * @param mixed  $value      Submitted input value.
+     * @param array  $form       Current form.
+     * @param string $input_name Posted input name, e.g. input_5_2.
+     * @param int    $lead_id    Entry ID.
+     * @param array  $lead       Entry being saved.
+     *
+     * @return string
+     */
+    public function get_value_save_entry( $value, $form, $input_name, $lead_id, $lead ) {
+      return $this->sanitize_input_value( $value, $input_name );
+    }
+
+    /**
+     * Sanitize a submitted value for the tracking key its input stores.
+     *
+     * Runs for every submission path (front end, AJAX, GFAPI::submit_form), so values are
+     * cleaned regardless of whether the form carries a submission nonce.
+     *
+     * @param mixed  $value      Submitted input value.
+     * @param string $input_name Posted input name, e.g. input_5_2.
+     *
+     * @return string
+     */
+    private function sanitize_input_value( $value, $input_name ) {
+      if ( ! is_scalar( $value ) ) {
+        return '';
+      }
+
+      $key = $this->get_input_key( (string) $input_name );
+      if ( '' === $key ) {
+        return '';
+      }
+
+      return $this->service()->sanitize_tracking_value( $key, $value );
+    }
+
+    /**
+     * Resolve the tracking key stored by a posted input name.
+     *
+     * @param string $input_name Posted input name, e.g. input_5_2.
+     *
+     * @return string
+     */
+    private function get_input_key( $input_name ) {
+      if ( ! preg_match( '/_(\d+)$/', $input_name, $matches ) ) {
+        return '';
+      }
+
+      $input_id = sprintf( '%d.%d', $this->id, (int) $matches[1] );
+
+      foreach ( $this->get_entry_inputs() as $input ) {
+        if ( isset( $input['id'] ) && (string) $input['id'] === $input_id ) {
+          return $this->get_stored_input_key( $input );
+        }
+      }
+
+      return '';
     }
 
     /**
